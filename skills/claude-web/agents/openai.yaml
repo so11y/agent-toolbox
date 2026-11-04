@@ -1,0 +1,4 @@
+interface:
+  display_name: "Claude Web"
+  short_description: "通过 VNC 自动中译日发送并回译 Claude 回复，支持聊天切换"
+  default_prompt: "使用 $claude-web，通过 VNC 将我的对话译成日文直接发送，并自动将 Claude 回复译成中文。"

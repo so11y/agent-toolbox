@@ -1,0 +1,4 @@
+interface:
+  display_name: "精简计划文档"
+  short_description: "Maintain authoritative docs without metadata churn"
+  default_prompt: "Use $concise-plan-docs to maintain this document's authority and role without expanding a bounded edit into unrelated metadata cleanup."

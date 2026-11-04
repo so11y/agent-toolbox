@@ -1,15 +1,27 @@
-# 本机/服务器敏感配置（不要提交）
-config.json
+# Machine-local connection details
+/skills/claude-consult/connection.json
+/cloud-desktop/接続情報.txt
 
-# 运行时生成物（由 scripts/codex-live-task.ps1 生成，包含本机路径与凭据参数）
-scripts/codex-live.cmd
-scripts/codex-live-launch.vbs
+# Credentials and private keys
+**/.env
+**/.env.*
+!**/.env.example
+**/auth.json
+**/*credentials*.json
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/id_rsa*
+**/id_ed25519*
+**/reverse_tunnel_ed25519*
 
-# 日志与临时文件
-*.log
-node_modules/
-.DS_Store
-Thumbs.db
-
-# ����ʱ���ɵ�������
-client/launch-*.vbs
+# Runtime data
+**/*.log
+**/__pycache__/
+**/*.pyc
+**/node_modules/
+**/.cache/
+**/.DS_Store
+/work/
+/.local/

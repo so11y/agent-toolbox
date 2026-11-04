@@ -1,0 +1,23 @@
+﻿クラウドデスクトップ 接続情報
+
+サーバー: 43.133.218.55（東京）
+環境: Ubuntu 26.04 LTS / Xfce / Firefox / 日本語 / Asia/Tokyo
+
+ZIP をダウンロードした場合は、先にすべて展開してください。
+このフォルダーの open-cloud-desktop.cmd をダブルクリックしてください。
+ブラウザーに表示されるパスワード欄へ、下のデスクトップ接続用パスワードを入力してください。
+
+デスクトップ接続用パスワード: REPLACE_LOCALLY
+Linux ユーザー: desktop
+Linux / sudo 用パスワード: REPLACE_LOCALLY
+
+日本語入力: Ctrl + Space（Mozc、ローマ字入力）
+ブラウザー: デスクトップの Firefox アイコン
+接続 URL: http://127.0.0.1:16080/vnc.html
+SSH ユーザー: desktop
+SSH 鍵: C:\Users\Administrator\.ssh\reverse_tunnel_ed25519
+
+デスクトップはサーバー起動時に自動起動します。
+ブラウザーのタブを閉じても、サーバー上のアプリは動き続けます。
+
+これはテンプレートです。実際のパスワードは Git に保存せず、手元で安全に保管してください。

@@ -1,0 +1,4 @@
+interface:
+  display_name: "代码整理"
+  short_description: "以最少机制整理局部实现，信任约束、优先成熟依赖并保持主路径清晰"
+  default_prompt: "使用 $tidy-code 整理当前代码范围，移除推测性防御和手写通用机制，并用测试确认自然失败仍然可见。"

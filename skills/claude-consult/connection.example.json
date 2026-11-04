@@ -1,0 +1,8 @@
+{
+  "host": "YOUR_SERVER_HOST",
+  "user": "YOUR_SSH_USER",
+  "port": 22,
+  "sshExecutable": "C:/Program Files/Git/usr/bin/ssh.exe",
+  "identityFile": "C:/Users/YOUR_USER/.ssh/reverse_tunnel_ed25519",
+  "proxy": "http://127.0.0.1:8118"
+}
