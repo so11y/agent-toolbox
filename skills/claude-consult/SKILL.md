@@ -30,7 +30,7 @@ The server can expose an explicitly approved catalog of development skills to th
 
 Read [references/usage.md](references/usage.md) for the API, sharing semantics, retention, and response shape.
 
-1. Identify the objective, actual environment, applicable local instructions, and acceptance conditions. Use the actual host Codex thread ID with `consultChat`; one Codex chat keeps one Claude session across objectives, steering, and completed phases. Never invent an ID or infer it from the project path.
+1. Identify the objective, actual environment, applicable local instructions, and acceptance conditions. Use the actual host Codex thread ID and current turn ID with `consultChat`; one Codex chat keeps one Claude session across objectives, steering, and completed phases. Never invent an ID or infer it from the project path.
 2. Select and inspect useful source files or directories, including relevant callers and tests. Sharing scope persists for that project across tasks; omitted scope arguments reuse it. Directory selection includes future files automatically. The helper skips private/tool configuration paths, but content review is still necessary.
 3. Call `consultChat` with the objective, initial scope when needed, and real environment facts. It synchronizes selected additions, changes, and deletions before invoking Claude. A new Codex chat reuses cached sources but gets a separate Claude conversation. Do not call `doctor` before each turn.
 4. Carry out Claude's next bounded batch:
@@ -49,6 +49,10 @@ Synchronization is one-way, initiated locally at reasoning boundaries. No backgr
 ## Conversation history
 
 Use the chat helper to list histories by title, open the bound session, and release a manual-viewing pause when the user asks to continue. The server also has a Japanese **会話履歴** launcher. Never attach two Codex chats to one Claude session. Read the history and binding sections of [references/usage.md](references/usage.md) before managing sessions.
+
+## Stopping
+
+When the user stops this workflow, cancel its current run through `stopChat`; do not merely stop polling. The installed `Interrupt` hook handles the native Stop button only after Codex trusts it. Read [the stop and recovery instructions](references/usage.md#stop-interruption-and-recovery) before cancellation setup or recovery. Confirm remote exit before reporting it stopped; otherwise report `stop_pending`. Discard late results, retain the conversation and completed edits, and resume only when the user asks.
 
 ## Failures and limits
 

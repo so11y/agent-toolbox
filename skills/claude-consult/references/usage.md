@@ -25,6 +25,7 @@ var relay = await import("file:///D:/codex/home/skills/claude-consult/scripts/ch
 var chatId = nodeRepl.requestMeta.threadId;
 var reply = await relay.consultChat({
   chatId,
+  turnId: nodeRepl.requestMeta["x-codex-turn-metadata"].turn_id,
   projectRoot: "D:/Projects/example",
   title: "検索処理の改善",
   task: "検索処理を確認し、改善方針と検証方法を考えてください。",
@@ -41,6 +42,7 @@ retain their values. Send only newly observed results and a natural Japanese upd
 ~~~javascript
 var next = await relay.consultChat({
   chatId,
+  turnId: nodeRepl.requestMeta["x-codex-turn-metadata"].turn_id,
   projectRoot: "D:/Projects/example",
   results: [{actionId:"check-1", command:"npm test", exitCode:1,
              output:"実際のエラー出力を原文のまま入れる"}],
@@ -144,7 +146,7 @@ Each normal turn uses two SSH connections:
 1. Combine CLI readiness with an inventory of missing/corrupt content hashes.
 2. Send the current file manifest, context/results, and only missing contents, then receive guidance.
 
-Requests and the shipped Python helper are gzip-compressed. User content travels as encoded stdin data; none is interpolated into shell commands. There is no background watcher or two-way synchronization.
+Requests and the shipped Python helper are gzip-compressed. The analysis channel stays open for cancellation and heartbeat frames; these small control frames are not included in the reported source/payload byte totals. User content travels as encoded stdin data; none is interpolated into shell commands. There is no background watcher or two-way synchronization.
 
 Project identity is derived from the canonical local project path and destination; only its opaque digest is sent. On Windows, path case does not create a separate identity. Two different checkouts have separate caches even if their repository names match.
 
@@ -188,3 +190,56 @@ References checked on 2026-11-04:
 Skill compatibility references checked on 2026-11-04:
 - [Claude Code skills](https://code.claude.com/docs/en/skills)
 - [Restricted and safe mode](https://code.claude.com/docs/en/cli-reference)
+
+## Stop, interruption, and recovery
+
+Normal calls must include the current Codex `turnId`, read from
+`nodeRepl.requestMeta["x-codex-turn-metadata"].turn_id` on the current call.
+Do not reuse a prior turn ID or invent one. Multiple reasoning rounds in one Codex
+turn share that turn ID but receive independent run IDs.
+
+The installed `Interrupt` and `SessionEnd` hooks run `scripts/interrupt.ps1`.
+They only write a local, turn-scoped cancellation marker; they read no transcripts
+and perform no network request. Both use a three-second limit. Codex must trust
+the exact definitions in the user `hooks.json` before it will invoke them.
+Check the native Hooks settings/list for `trusted`; a script test alone does not
+prove the actual Stop button has been wired up.
+
+- When the user says stop, use `stopChat({chatId})`. It bypasses the analysis lock,
+  marks the active turn cancelled, and requests remote termination for that run only.
+  Do not pass a new message's turn ID when intending to stop an older active run.
+- `cancelled` with `remoteExited: true` confirms the run is no longer executing.
+  `stop_pending` means termination has not been confirmed; do not call it stopped.
+- Pressing the native Stop button triggers the trusted hook without a model reply.
+  The active transport observes the marker, sends cancel, and stops heartbeats.
+- The same SSH analysis channel carries a small heartbeat every three seconds.
+  EOF cancels the run; fifteen seconds without a heartbeat expires its lease.
+  There is no permanent local polling service.
+- The server targets its recorded process group, first TERM, then KILL after
+  three seconds if necessary. A separate run-scoped guard handles helper death
+  and retains the project's lock through cleanup. The child also binds its
+  lifetime to the helper before exec. Other runs and manual history terminals
+  are outside this cancellation scope.
+- Late results from an interrupted turn are discarded. `ensureCurrent` rejects
+  its old guidance even if the selected source hashes still match.
+- Keep the chat/session binding, conversation history, and completed local edits.
+  After the user asks to continue, call `resumeChat`, check its result, and send
+  fresh context/results in a new turn. It reconciles remote exit before recovering
+  a cancelled run's stale local lock. Missing history is not silently replaced.
+  Remote requests already submitted may have incurred usage; process termination
+  does not promise a refund or immediate provider-side billing cancellation.
+
+Remote setup now includes `scripts/run_control.py` alongside `remote_review.py`
+under `~/.local/lib/project-consult/`. Keep the installed files in sync with the
+skill. Run IDs, local chat/turn IDs, hook markers, heartbeats, and process records
+are transport metadata, not Claude prompt materials. The existing read-only
+snapshot and Japanese/Chinese language rules remain in force.
+
+Validation helpers:
+- `tests/remote_stop_test.py`: isolated processes; cancellation, EOF, lease expiry,
+  helper death, descendant cleanup, lock release, and run isolation; no model call.
+- `tests/local_stop_test.mjs`: directly invokes the short PowerShell hook on
+  isolated fixtures; verifies correct turn matching, recovery, and stale-result rejection.
+- `tests/live_stop_test.mjs`: opt-in real Claude calls to verify cancellation
+  through the production SSH path and continuation with the same session.
+  It directly invokes the hook; it does not claim to test the desktop Stop button.

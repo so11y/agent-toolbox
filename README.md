@@ -27,6 +27,14 @@ Caveman、Find Skills、Codex 自带的 `.system` 技能和插件缓存不在本
 
 `claude-consult` 需要把 `connection.example.json` 复制为同目录的 `connection.json`，填写 SSH 地址、用户、可执行文件和本机私钥路径。模板中的占位值需要替换；私钥单独保管。当前机器原有技能配置未作改动。
 
+`claude-consult` 的停止联动还需要以下配套：
+
+1. 把 `skills/claude-consult/scripts/remote_review.py` 和 `run_control.py` 同步到服务器用户的 `~/.local/lib/project-consult/`，保持与本地技能版本一致。
+2. 将 `skills/claude-consult/hooks.example.json` 中的 `Interrupt` 和 `SessionEnd` 配置合并到实际 Codex 配置目录的 `hooks.json`，保留其他钩子。示例使用本机 Windows 路径；新机器需替换 PowerShell 和 `interrupt.ps1` 的绝对路径。
+3. 在 Codex「设置 → Hooks」中信任这两项，并确认已启用。信任状态由本机管理，不随仓库迁移；变更定义后需重新检查。
+
+停止会取消当前远端运行，保留会话供继续使用。脚本测试不等于已验证桌面停止按钮。接口、恢复流程和验证脚本见 [停止与恢复说明](skills/claude-consult/references/usage.md#stop-interruption-and-recovery)。其中 `tests/live_stop_test.mjs` 会发起真实 Claude 请求，仅在需要验证时手动运行。
+
 本地脚本使用 Node.js；`claude-web` 的 VNC 脚本需要 Node.js 22+ 和 Chrome/Edge/Chromium，使用原生 WebSocket，无需额外 npm 包。`claude-consult` 通过 SSH 调用服务器的 Python 3 和已登录的 Claude CLI。随附参考资料保留各技能的具体用法。
 
 如需恢复 Claude 决策的服务器技能，将 `server/claude-skills/` 下的 5 个目录复制到服务器用户的 `~/.claude/skills/`，最后再复制 `.project-consult.json`。目录固定了原始文件哈希，不要转换换行符；本仓库的 `.gitattributes` 已关闭自动换行转换。保留服务器上其他无关技能。

@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import { cancelled } from './local_control.mjs';
 import path from 'node:path';
 import { homedir } from 'node:os';
 import { createHash, randomUUID } from 'node:crypto';
@@ -115,41 +116,58 @@ async function projectIdentity(projectRoot, configFile) {
   return { root, config, destination, projectId, projectFile: path.join(projectStore, projectId + '.json') };
 }
 
-function command(executable, args, input, timeoutMs) {
+function command(executable, args, input, timeoutMs, control) {
   return new Promise((resolve, reject) => {
     const child = spawn(executable, args, { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
-    let stdout = '', stderr = '', size = 0, failure;
-    const timer = setTimeout(() => { failure = new Error('SSH call timed out; do not automatically repeat a potentially billed request.'); child.kill(); }, timeoutMs);
-    child.stdout.setEncoding('utf8');
-    child.stderr.setEncoding('utf8');
-    for (const [stream, key] of [[child.stdout, 'out'], [child.stderr, 'err']]) {
-      stream.on('data', chunk => {
-        size += Buffer.byteLength(chunk);
-        if (size > 2 * 1024 * 1024) { failure = new Error('Remote output exceeded 2 MiB.'); child.kill(); return; }
-        if (key === 'out') stdout += chunk; else stderr += chunk;
+    let stdout='',stderr='',size=0,failure,ticking=false,lastPing=0,ending=false;
+    const timer=setTimeout(()=>{failure=new Error('SSH call timed out; remote stop is not yet confirmed.');child.kill();},timeoutMs);
+    const heartbeat=control ? setInterval(async()=>{
+      if(ticking || ending) return;
+      ticking=true;
+      try {
+        if(await cancelled(control)) {
+          ending=true;
+          child.stdin.end('cancel\n');
+        } else if(Date.now()-lastPing>=3000) {
+          child.stdin.write('ping\n');lastPing=Date.now();
+        }
+      } catch(e) {failure=e;ending=true;child.stdin.end();}
+      finally {ticking=false;}
+    },200) : null;
+    const cleanup=()=>{clearTimeout(timer);if(heartbeat)clearInterval(heartbeat);ending=true;};
+    child.stdout.setEncoding('utf8');child.stderr.setEncoding('utf8');
+    for(const [stream,key] of [[child.stdout,'out'],[child.stderr,'err']]) {
+      stream.on('data',chunk=>{
+        size+=Buffer.byteLength(chunk);
+        if(size>2*1024*1024){failure=new Error('Remote output exceeded 2 MiB.');child.kill();return;}
+        if(key==='out')stdout+=chunk;else stderr+=chunk;
       });
     }
-    child.once('error', error => { clearTimeout(timer); reject(error); });
-    child.once('close', code => { clearTimeout(timer); failure ? reject(failure) : resolve({ code, stdout, stderr }); });
-    child.stdin.on('error', error => { if (error.code !== 'EPIPE') failure = error; });
-    child.stdin.end(input);
+    child.once('error',e=>{cleanup();reject(e);});
+    child.once('close',code=>{cleanup();failure?reject(failure):resolve({code,stdout,stderr});});
+    child.stdin.on('error',e=>{if(e.code!=='EPIPE')failure=e;});
+    if(control){child.stdin.write(input+'ping\n');lastPing=Date.now();}
+    else child.stdin.end(input);
   });
 }
 
-async function exchange(config, payload, timeoutMs) {
-  const compressed = gzipSync(Buffer.from(JSON.stringify({ ...payload, proxy: config.proxy || null })));
-  const bootstrap = 'import base64,gzip\nREVIEW_REQUEST_GZIP=base64.b64decode("' +
-    compressed.toString('base64') + '")\nexec(gzip.decompress(base64.b64decode("' +
-    (await program).toString('base64') + '")))\n';
-  const args = ['-T', '-p', String(config.port), '-i', config.identityFile,
-    '-o', 'IdentitiesOnly=yes', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes',
-    '-o', 'ForwardAgent=no', '-o', 'ClearAllForwardings=yes', '-o', 'ConnectTimeout=12',
-    '-o', 'ServerAliveInterval=15', config.user + '@' + config.host, 'python3 -'];
-  const result = await command(config.sshExecutable, args, bootstrap, timeoutMs);
+async function exchange(config,payload,timeoutMs,control) {
+  if(control && await cancelled(control))
+    return {answer:{status:'cancelled',remoteExited:true},sentBytes:0,receivedBytes:0};
+  const compressed=gzipSync(Buffer.from(JSON.stringify({...payload,proxy:config.proxy||null})));
+  const bootstrap='import base64,gzip\nREVIEW_REQUEST_GZIP=base64.b64decode("'+compressed.toString('base64')+
+    '")\nexec(gzip.decompress(base64.b64decode("'+(await program).toString('base64')+'")))\n';
+  const input=gzipSync(Buffer.from(bootstrap)).toString('base64')+'\n';
+  const remote="python3 -c 'import sys,base64,gzip;exec(gzip.decompress(base64.b64decode(sys.stdin.buffer.raw.readline())))'";
+  const args=['-T','-p',String(config.port),'-i',config.identityFile,
+    '-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes',
+    '-o','ForwardAgent=no','-o','ClearAllForwardings=yes','-o','ConnectTimeout=12',
+    '-o','ServerAliveInterval=5',config.user+'@'+config.host,remote];
+  const result=await command(config.sshExecutable,args,input,timeoutMs,control);
   let answer;
-  try { answer = JSON.parse(result.stdout); }
-  catch { throw new Error('SSH/helper failed (exit ' + result.code + '): ' + result.stderr.slice(0, 1000)); }
-  return { answer, sentBytes: Buffer.byteLength(bootstrap), receivedBytes: Buffer.byteLength(result.stdout + result.stderr) };
+  try {answer=JSON.parse(result.stdout);}
+  catch {throw new Error('SSH/helper failed (exit '+result.code+'): '+result.stderr.slice(0,1000));}
+  return {answer,sentBytes:Buffer.byteLength(input),receivedBytes:Buffer.byteLength(result.stdout+result.stderr)};
 }
 
 export async function doctor(configFile) {
@@ -158,7 +176,7 @@ export async function doctor(configFile) {
 
 /** One sequential reasoning turn. Project sharing persists; each task has its own Claude conversation. */
 export async function consult({ projectRoot, taskDir, task, include = [], exclude,
-  environment, results = [], message = '', baseRevision, responseLanguage, configFile, conversation }) {
+  environment, results = [], message = '', baseRevision, responseLanguage, configFile, conversation, control }) {
   const { root, config, destination, projectId, projectFile } = await projectIdentity(projectRoot, configFile);
   const stateFile = path.join(taskDir, 'state.json');
   let state = await readJson(stateFile);
@@ -197,7 +215,8 @@ export async function consult({ projectRoot, taskDir, task, include = [], exclud
   };
   const request = { version: 3, action: 'analyze', projectId, workspaceId: state.workspaceId, snapshotId,
     sessionId: conversation?.sessionId || state.sessionId || null, ...context, changes, files,
-    ...(conversation ? { conversation } : {}) };
+    ...(conversation ? { conversation } : {}),
+    ...(control ? {control:{key:control.key,runId:control.runId}} : {}) };
   const step = randomUUID();
   await fs.mkdir(path.join(taskDir, 'steps'), { recursive: true });
   await fs.mkdir(projectStore, { recursive: true });
@@ -225,7 +244,10 @@ export async function consult({ projectRoot, taskDir, task, include = [], exclud
         uploads[hash] = objects.get(hash).toString('base64');
         sourceBytes += objects.get(hash).length;
       }
-      const reply = await exchange(config, { ...request, uploads }, 660000);
+      const reply = await exchange(config, { ...request, uploads }, 660000, control);
+      if(control && await cancelled(control)) {
+        reply.answer = {status:'cancelled',remoteExited:reply.answer.remoteExited===true || reply.answer.status==='ok',runId:control.runId};
+      }
       result = { ...reply.answer, transfer: {
         selectedFiles: files.length, uploadedObjects: Object.keys(uploads).length,
         uploadedSourceBytes: sourceBytes, selectedSourceBytes: bytes,
@@ -248,6 +270,8 @@ export async function consult({ projectRoot, taskDir, task, include = [], exclud
 }
 
 export async function ensureCurrent(taskDir) {
+  const run=await readJson(path.join(path.dirname(taskDir),'active-run.json'));
+  if(run && await cancelled(run)) throw new Error('This guidance belongs to a cancelled turn; request fresh analysis.');
   const state = await readJson(path.join(taskDir, 'state.json'));
   if (!state?.latestStep || state.closed) throw new Error('No open, successfully analyzed task is recorded.');
   const project = await readJson(path.join(projectStore, state.projectId + '.json'));
@@ -279,7 +303,7 @@ export async function forgetProject({ projectRoot, configFile }) {
   return answer;
 }
 
-export async function chatAction(payload, configFile) {
-  if (!['history_open','history_release','history_register','history_list'].includes(payload.action)) throw new Error('Invalid history action.');
-  return (await exchange(await configuration(configFile), payload, 45000)).answer;
+export async function chatAction(payload, configFile, timeoutMs = 45000) {
+  if (!['history_open','history_release','history_register','history_list','run_cancel','run_status'].includes(payload.action)) throw new Error('Invalid history action.');
+  return (await exchange(await configuration(configFile), payload, timeoutMs)).answer;
 }

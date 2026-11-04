@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "Interrupt": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoLogo -NoProfile -NonInteractive -File D:\\codex\\home\\skills\\claude-consult\\scripts\\interrupt.ps1",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoLogo -NoProfile -NonInteractive -File D:\\codex\\home\\skills\\claude-consult\\scripts\\interrupt.ps1",
+            "timeout": 3
+          }
+        ]
+      }
+    ]
+  }
+}

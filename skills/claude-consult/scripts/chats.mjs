@@ -3,6 +3,7 @@ import path from 'node:path';
 import { homedir } from 'node:os';
 import { createHash, randomUUID } from 'node:crypto';
 import { consult, chatAction } from './consult.mjs';
+import { beginRun, finishRun, cancelled, writeRecord } from './local_control.mjs';
 
 const store = path.join(homedir(), '.cache', 'claude-consult', 'chats');
 const defaults = new URL('../connection.json', import.meta.url);
@@ -27,8 +28,14 @@ async function locked(chatId, fn) {
   const lock = path.join(dir, 'operation.lock');
   try { await fs.mkdir(lock); }
   catch (e) { if (e.code === 'EEXIST') throw new Error('This Codex chat already has an operation running. Await it; inspect a leftover lock after a crash.'); throw e; }
+  const owner={id:randomUUID()};
+  await writeRecord(path.join(lock,'owner.json'),owner);
   try { return await fn(dir, await read(path.join(dir, 'chat.json'))); }
-  finally { await fs.rmdir(lock); }
+  finally {
+    if((await read(path.join(lock,'owner.json')))?.id===owner.id) {
+      await fs.unlink(path.join(lock,'owner.json'));await fs.rmdir(lock);
+    }
+  }
 }
 async function identity(projectRoot, configFile) {
   const root = await fs.realpath(projectRoot);
@@ -57,11 +64,26 @@ function metadata(entry) {
   return {key:entry.key, title:entry.title, sessionId:entry.sessionId, resume:entry.started};
 }
 export async function consultChat(options) {
+  if(!uuid.test(options.turnId||'')) throw new Error('Pass the actual Codex turn_id with chatId.');
   return locked(options.chatId, async (dir,entry) => {
     entry = await entryFor(dir,entry,options);
+    const previous=await read(path.join(dir,'active-run.json'));
+    if(previous && await cancelled(previous) && entry.resumedAfterRun!==previous.runId) throw new Error('The previous Codex turn was stopped. Use resumeChat before continuing.');
     if (entry.paused || entry.attention) throw new Error('This chat is paused or needs reconciliation. Inspect its state, then use resumeChat when the user asks to continue.');
+    const control=await beginRun(dir,options.turnId,entry.key);
+    const ownerFile=path.join(dir,'operation.lock','owner.json');
+    await writeRecord(ownerFile,{...await read(ownerFile),runId:control.runId});
     try {
-      const result = await consult({...options, taskDir:entry.taskDir, conversation:metadata(entry)});
+      const result = await cancelled(control) ? {status:'cancelled',remoteExited:true} :
+        await consult({...options, taskDir:entry.taskDir, conversation:metadata(entry),control});
+      if((await read(path.join(dir,'active-run.json')))?.runId!==control.runId) return {status:'cancelled',runId:control.runId};
+      if(await cancelled(control) || ['cancelled','connection_lost','lease_expired','helper_exited','timeout'].includes(result.status)) {
+        entry.paused=true;entry.attention=true;
+        entry.lastStatus=result.remoteExited?'cancelled':'stop_pending';
+        await finishRun(control,{status:entry.lastStatus,remoteExited:result.remoteExited});
+        await save(dir,entry);
+        return {status:entry.lastStatus,remoteExited:result.remoteExited===true,sessionId:entry.sessionId,runId:control.runId};
+      }
       if (result.status === 'ok') {
         if (result.sessionId !== entry.sessionId) throw new Error('Claude returned a different session ID; binding was not changed.');
         entry.started = true;
@@ -70,10 +92,15 @@ export async function consultChat(options) {
       } else {
         entry.attention = !['not_ready','conversation_paused','project_busy'].includes(result.status);
       }
+      await finishRun(control,{status:result.status,remoteExited:result.status==='ok'||result.status==='not_ready'});
       entry.lastStatus = result.status;
       await save(dir,entry);
       return {...result, taskDir:entry.taskDir, conversationTitle:entry.title};
     } catch(e) {
+      if((await read(path.join(dir,'active-run.json')))?.runId!==control.runId) throw e;
+      const wasCancelled=await cancelled(control);
+      await finishRun(control,{status:wasCancelled?'stop_pending':'attention_required',remoteExited:false});
+      entry.paused=wasCancelled;
       entry.attention = true;
       entry.lastStatus = 'attention_required';
       await save(dir,entry);
@@ -103,6 +130,7 @@ export async function openChat({chatId,configFile}) {
   });
 }
 export async function resumeChat({chatId,configFile}) {
+  await recoverCancelledLock(chatId,configFile);
   return locked(chatId, async(dir,entry)=>{
     if (!entry) throw new Error('No conversation binding found.');
     const result = await chatAction({action:'history_release',key:entry.key,sessionId:entry.sessionId},configFile);
@@ -110,6 +138,7 @@ export async function resumeChat({chatId,configFile}) {
       if (entry.started && !result.sessionExists) throw new Error('Saved Claude history is missing; restore it before continuing this binding.');
       entry.started = result.sessionExists;
       entry.paused = false; entry.attention=false;
+      entry.resumedAfterRun=(await read(path.join(dir,'active-run.json')))?.runId;
       await save(dir,entry);
     }
     return result;
@@ -138,3 +167,39 @@ export async function bindChat(options) {
 }
 
 export { ensureCurrent } from './consult.mjs';
+
+/** Cancels only this chat's active run; deliberately bypasses the analysis lock. */
+export async function stopChat({chatId,turnId,configFile}) {
+  const dir=location(chatId);
+  const control=await read(path.join(dir,'active-run.json'));
+  if(!control || (turnId && turnId!==control.turnId)) return {status:'not_running'};
+  await writeRecord(control.turnCancelFile,{reason:'user_interrupt',turnId:control.turnId});
+  await writeRecord(control.cancelFile,{reason:'user_interrupt'});
+  try {
+    let result=await chatAction({action:'run_cancel',control:{key:control.key,runId:control.runId}},configFile,10000);
+    const deadline=Date.now()+6000;
+    while(!result.remoteExited && Date.now()<deadline) {
+      await new Promise(resolve=>setTimeout(resolve,300));
+      result=await chatAction({action:'run_status',control:{key:control.key,runId:control.runId}},configFile,10000);
+    }
+    const answer={status:result.remoteExited?'cancelled':'stop_pending',remoteExited:result.remoteExited===true,runId:control.runId};
+    await finishRun(control,answer);
+    return answer;
+  } catch(e) {
+    const answer={status:'stop_pending',remoteExited:false,runId:control.runId,diagnostic:e.message};
+    await finishRun(control,answer);
+    return answer;
+  }
+}
+async function recoverCancelledLock(chatId,configFile) {
+  const dir=location(chatId),control=await read(path.join(dir,'active-run.json'));
+  if(!control || !await cancelled(control)) return;
+  const reply=await chatAction({action:'run_cancel',control:{key:control.key,runId:control.runId}},configFile,10000);
+  if(!reply.remoteExited) throw new Error('Remote stop is not confirmed yet; do not resume or replace this run.');
+  const lock=path.join(dir,'operation.lock');
+  const owner=await read(path.join(lock,'owner.json'));
+  if(owner?.runId===control.runId) {
+    await fs.unlink(path.join(lock,'owner.json'));
+    await fs.rmdir(lock);
+  }
+}

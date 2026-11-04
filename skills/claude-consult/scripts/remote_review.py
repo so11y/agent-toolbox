@@ -15,6 +15,8 @@ import signal
 import subprocess
 import sys
 import uuid
+sys.path.insert(0, str(Path.home()/".local/lib/project-consult"))
+import run_control
 
 TOOLS = "Read,Grep,Glob"
 REQUIRED_FLAGS = ["--restricted", "--safe-mode", "--tools", "--strict-mcp-config", "--json-schema"]
@@ -117,7 +119,7 @@ def project_lock(identifier):
             yield False
             return
         try:
-            yield True
+            yield handle
         finally:
             fcntl.flock(handle, fcntl.LOCK_UN)
 
@@ -398,7 +400,7 @@ def history_action(request):
     raise ValueError("Unknown conversation action.")
 
 
-def reason(request, binary, env):
+def reason(request, binary, env, lease=None, lock_fd=None):
     analysis = materialize(request)
     guide_info = snapshot_guides(analysis)
     prompt = (
@@ -429,7 +431,14 @@ def reason(request, binary, env):
         args += [flag, str(uuid.UUID(request["sessionId"]))]
     elif request.get("sessionId"):
         args += ["--resume", str(uuid.UUID(request["sessionId"]))]
-    code, stdout, stderr = process(args, env, cwd=analysis, text=prompt, timeout=600)
+    if lease:
+        outcome, output = run_control.run(args, env, cwd=analysis, text=prompt, timeout=600, lease=lease, lock_fd=lock_fd)
+        if output is None:
+            history_register(request, analysis, outcome["status"])
+            return {**outcome, "sessionId": request["sessionId"]}
+        code, stdout, stderr = output
+    else:
+        code, stdout, stderr = process(args, env, cwd=analysis, text=prompt, timeout=600)
     try:
         response = json.loads(stdout)
     except json.JSONDecodeError:
@@ -458,6 +467,10 @@ def main(raw=None):
         raise ValueError("Request exceeds transport limit.")
     request = json.loads(raw)
     action = request["action"]
+    if action == "run_cancel":
+        return run_control.cancel(request["control"])
+    if action == "run_status":
+        return run_control.status(request["control"])
     if action.startswith("history_"):
         return history_action(request)
     if action == "doctor":
@@ -465,6 +478,9 @@ def main(raw=None):
         return readiness(binary, env)
     if action not in ("offer", "analyze", "close", "forget"):
         raise ValueError("Unknown action.")
+    lease = run_control.Lease(request["control"]) if action == "analyze" and request.get("control") else None
+    if lease and lease.check():
+        return {"status": lease.check(), "remoteExited": True}
     root = workspace(request["projectId"])
     with project_lock(request["projectId"]) as acquired:
         if not acquired:
@@ -490,7 +506,7 @@ def main(raw=None):
             return offer(request)
         if not binary:
             return {"status": "claude_missing"}
-        return reason(request, binary, env)
+        return reason(request, binary, env, lease=lease, lock_fd=acquired.fileno())
 
 
 if __name__ == "__main__":
