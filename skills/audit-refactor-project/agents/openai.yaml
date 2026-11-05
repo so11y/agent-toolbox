@@ -1,4 +1,4 @@
 interface:
-  display_name: "重构"
-  short_description: "追踪全仓所有权与复杂度，移除推测性防御、冗余机制和冲突说明"
-  default_prompt: "使用 $audit-refactor-project 审计整个仓库，从根因简化实现；生产代码信任既定约束，并用测试确认错误会自然暴露。"
+  display_name: "Repository Audit"
+  short_description: "Trace ownership and simplify repository-wide code"
+  default_prompt: "Use $audit-refactor-project to audit this repository, simplify root causes, and verify that natural failures remain visible."

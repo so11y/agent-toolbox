@@ -8,13 +8,14 @@ import sys
 import tempfile
 import time
 import uuid
-sys.path.insert(0,str(Path.home()/".local/lib/project-consult"))
+RUNTIME = Path(__file__).resolve().parents[1] / "claude-consult"
+sys.path.insert(0, str(RUNTIME))
 import run_control as rc
 
 WORKER = r'''
 import fcntl,json,os,sys
 from pathlib import Path
-sys.path.insert(0,str(Path.home()/".local/lib/project-consult"))
+sys.path.insert(0, sys.argv[5])
 import run_control as rc
 rc.BASE=Path(sys.argv[1])
 control=json.loads(sys.argv[2])
@@ -41,7 +42,7 @@ with tempfile.TemporaryDirectory(prefix="claude-stop-test-") as tmp:
     def start(script="import time; time.sleep(35)",key=None,run=None):
         control={"key":key or str(uuid.uuid4()),"runId":run or str(uuid.uuid4())}
         lock=Path(tmp)/(control["runId"]+".lock")
-        child=subprocess.Popen([sys.executable,"-u","-c",WORKER,str(rc.BASE),json.dumps(control),script,str(lock)],
+        child=subprocess.Popen([sys.executable,"-u","-c",WORKER,str(rc.BASE),json.dumps(control),script,str(lock),str(RUNTIME)],
             stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
         owned.append(child)
         child.stdin.write("ping\n");child.stdin.flush()

@@ -1,2 +1,2 @@
-# Preserve backup bytes; the server skill catalog pins raw-file SHA-256 hashes.
-* -text
+# Preserve source bytes; deployment pins installed SKILL.md SHA-256 hashes.
+* -text whitespace=cr-at-eol

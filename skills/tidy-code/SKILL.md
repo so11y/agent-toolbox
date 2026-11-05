@@ -9,7 +9,7 @@ description: >-
   call per intent. Use for local refactoring, simplification, optimization or
   a final readability pass on a module, file or feature, and whenever the user
   says "clean up", "simplify", "tidy", "optimize", "too slow", "too
-  defensive", "too many layers", "简化/整理/优化/去掉多余的防御". Not for repository-wide
+  defensive", "too many layers", "simplify/tidy/optimize/remove redundant guards". Not for repository-wide
   audits or architecture decisions (use audit-refactor-project) or for plain
   bug fixes.
 ---

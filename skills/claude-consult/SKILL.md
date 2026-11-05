@@ -7,6 +7,8 @@ description: Use when the user wants remote Claude Code to lead reasoning and de
 
 Claude Code leads the technical reasoning throughout the task. Codex carries out the next bounded batch of work locally and returns evidence. Continue until the user's acceptance conditions are met; do not reduce Claude's role to a one-off review of a locally chosen solution.
 
+This local skill includes its local scripts. Its server dependency is installed separately from the repository's `server/claude-consult/` into `~/.local/lib/project-consult/`. No server executable is bundled into the skill.
+
 ## Roles and authority
 
 - Claude chooses what to investigate, requests missing files or command output, diagnoses results, proposes changes, and decides the next verification.
@@ -18,7 +20,7 @@ Claude Code leads the technical reasoning throughout the task. Codex carries out
 
 Use the selected project and [connection.json](connection.json). Share relevant source, configuration templates, a useful project outline, accurate environment facts, and actual results. Keep credentials, personal files, Codex conversations/internal reasoning, local orchestration records, and SSH configuration out of the shared materials. Preserve relevant diagnostic facts and tool references already present in the project's code.
 
-Write task descriptions and progress messages in natural, concise Japanese unless the user requests another language. Describe what changed, what was observed, and what needs checking, like an ordinary development conversation. For a failed check, a suitable tone is: “変更を反映しました。テストではまだこのエラーが出ています。次に確認する箇所を教えてください。” Use wording appropriate to the actual result, not a canned report.
+Write task descriptions and progress messages in natural, concise Japanese unless the user requests another language. Describe what changed, what was observed, and what needs checking, like an ordinary development conversation. For a failed check, say what changed, provide the actual error, and ask which part to inspect next. Use wording appropriate to the actual result, not a canned report.
 
 Report conclusions and actual execution progress to the user in Chinese unless the user requests another language. Keep paths, code, commands, error text, exit codes, and test counts exact. Structured fields remain structured. Do not add artificial typos, personal anecdotes, claims of manual authorship, invented results, or promises that automation cannot be inferred.
 
@@ -48,7 +50,7 @@ Synchronization is one-way, initiated locally at reasoning boundaries. No backgr
 
 ## Conversation history
 
-Use the chat helper to list histories by title, open the bound session, and release a manual-viewing pause when the user asks to continue. The server also has a Japanese **会話履歴** launcher. Never attach two Codex chats to one Claude session. Read the history and binding sections of [references/usage.md](references/usage.md) before managing sessions.
+Use the chat helper to list histories by title, open the bound session, and release a manual-viewing pause when the user asks to continue. The server also has a Japanese conversation-history launcher. Never attach two Codex chats to one Claude session. Read the history and binding sections of [references/usage.md](references/usage.md) before managing sessions.
 
 ## Stopping
 

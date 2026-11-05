@@ -15,7 +15,6 @@ import signal
 import subprocess
 import sys
 import uuid
-sys.path.insert(0, str(Path.home()/".local/lib/project-consult"))
 import run_control
 
 TOOLS = "Read,Grep,Glob"
@@ -458,11 +457,19 @@ def reason(request, binary, env, lease=None, lock_fd=None):
             "usage": response.get("usage"), "costUSD": response.get("total_cost_usd"), **guide_info}
 
 
-def main(raw=None):
+def read_request():
+    # Do not read ahead: the same stdin carries later heartbeat/cancel frames.
+    frame = sys.stdin.buffer.raw.readline(MAX_PAYLOAD * 2 + 1)
+    if len(frame) > MAX_PAYLOAD * 2 or not frame.endswith(b"\n"):
+        raise ValueError("Invalid request frame.")
+    packed = base64.b64decode(frame[:-1], validate=True)
+    with gzip.GzipFile(fileobj=io.BytesIO(packed)) as source:
+        return source.read(MAX_PAYLOAD + 1)
+
+
+def main(raw):
     if os.geteuid() == 0:
         return {"status": "non_root_account_required"}
-    if raw is None:
-        raw = sys.stdin.buffer.read(MAX_PAYLOAD + 1)
     if len(raw) > MAX_PAYLOAD:
         raise ValueError("Request exceeds transport limit.")
     request = json.loads(raw)
@@ -512,12 +519,7 @@ def main(raw=None):
 if __name__ == "__main__":
     os.umask(0o077)
     try:
-        packed = globals().get("REVIEW_REQUEST_GZIP")
-        raw = None
-        if packed is not None:
-            with gzip.GzipFile(fileobj=io.BytesIO(packed)) as source:
-                raw = source.read(MAX_PAYLOAD + 1)
-        answer = main(raw)
+        answer = main(read_request())
     except subprocess.TimeoutExpired:
         answer = {"status": "analysis_timeout", "message": "The process group was stopped; do not automatically repeat the request."}
     except Exception as error:

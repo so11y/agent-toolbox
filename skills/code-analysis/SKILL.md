@@ -7,8 +7,8 @@ description: >-
   interleaving can actually produce a wrong state). Confirms or refutes a
   suspicion and reports only findings backed by a cost calculation, a concrete
   execution sequence or a measurement; "no significant problem found" is a
-  valid result. Use when the user asks "为什么这么慢", "分析一下性能", "这里是不是性能问题",
-  "有没有重入/并发/竞态问题", "where is the time going", "can this
+  valid result. Use when the user asks "why is this so slow", "analyze performance", "is this a performance issue",
+  "is there a reentrancy, concurrency, or race issue", "where is the time going", "can this
   re-enter". Does not edit code, hunt bugs or give generic advice. Not for
   implementing fixes (use tidy-code) or whole-repository audits (use
   audit-refactor-project).

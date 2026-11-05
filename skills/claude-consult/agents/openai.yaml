@@ -1,4 +1,4 @@
 interface:
-  display_name: "Claude 决策 · Codex 执行"
-  short_description: "Claude 主导分析，Codex 执行，增量同步项目，一条 Codex 对话对应一条 Claude 会话"
-  default_prompt: "使用 $claude-consult，由 Claude 主导分析，你在本地执行，以自然日语反馈真实结果，并按当前 Codex 对话 ID 复用同一条 Claude 会话和项目副本，增量同步直到验收通过；阶段完成后保留会话。"
+  display_name: "Claude Analysis, Codex Execution"
+  short_description: "Let remote Claude reason while Codex executes locally"
+  default_prompt: "Use $claude-consult. Let Claude lead analysis while you execute locally, report real results in natural Japanese, and reuse the Claude session bound to this Codex chat. Synchronize selected sources until acceptance, and retain the session after each phase."

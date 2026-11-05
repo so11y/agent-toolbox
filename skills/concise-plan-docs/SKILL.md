@@ -7,8 +7,8 @@ description: >-
   analysis, and execution record. Use whenever the user asks to create or
   change a plan, spec, contract, numbered decision (e.g. "D12"), acceptance
   gate, task board or progress record, or to deduplicate or reorganize such
-  documents, e.g. "更新方案文档", "改一下这条决策", "按新决定调整计划",
-  "整理计划文档", "write up the implementation plan", "record what we did".
+  documents, e.g. "update the plan document", "revise this decision", "adjust the plan to the new decision",
+  "organize the planning documents", "write up the implementation plan", "record what we did".
   Bounded edits stay bounded: change the authority and only the active text
   that would implement the old rule. Not for README/API reference, code
   comments, or general prose editing.
@@ -77,7 +77,7 @@ Trace repeated concepts to their best owner, move material to the correct role, 
 
 ## Writing rules
 
-- State each normative decision completely once; elsewhere use a reference, e.g. "按 D12，本节只说明提交阶段的实现语义".
+- State each normative decision completely once; elsewhere use a reference, e.g. "Under D12, this section describes only the implementation semantics of the commit phase".
 - A textual difference is a conflict only if it could lead to different behavior, owner, ordering, interface, persistence result or acceptance result.
 - Keep code, tables and examples that define an API, state transition, data structure, edge case or observable contract. Remove only what has no independent implementation or verification consequence.
 - No arbitrary limits on length, sections, examples or tables.

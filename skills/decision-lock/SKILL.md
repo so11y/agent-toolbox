@@ -6,8 +6,8 @@ description: >-
   Use when the user wants flaws, omissions, contradictions, sequencing
   problems or overdesign found and fixed without reopening settled decisions;
   when decisions or phase boundaries are frozen, agreed, authoritative or
-  already decided; when the user says 按已定方案, 保持大方向, 保持一致,
-  不要重新设计, 在既定方向内调优, "don't redesign"; or when audit/refactor
+  already decided; when the user says follow the agreed plan, preserve the overall direction, maintain consistency,
+  do not redesign, optimize within the agreed direction, "don't redesign"; or when audit/refactor
   skills must stay subordinate to prior decisions. Not for greenfield design
   where nothing is decided yet.
 ---

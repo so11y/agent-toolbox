@@ -1,0 +1,4 @@
+interface:
+  display_name: "Code Analysis"
+  short_description: "Analyze performance or concurrency using concrete evidence"
+  default_prompt: "Use $code-analysis to investigate the stated concern without changing code."

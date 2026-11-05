@@ -1,4 +1,4 @@
 interface:
-  display_name: "文档约束"
+  display_name: "Decision Lock"
   short_description: "Audit and improve plans without reopening decisions"
   default_prompt: "Use $decision-lock to find and fix flaws inside this plan without changing its frozen direction."

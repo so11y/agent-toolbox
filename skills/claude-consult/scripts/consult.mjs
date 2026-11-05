@@ -5,11 +5,8 @@ import { homedir } from 'node:os';
 import { createHash, randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { gzipSync } from 'node:zlib';
-import { fileURLToPath } from 'node:url';
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const defaults = path.resolve(here, '../connection.json');
-const program = fs.readFile(path.join(here, 'remote_review.py')).then(gzipSync);
+const defaults = new URL('../connection.json', import.meta.url);
 const projectStore = path.join(homedir(), '.cache', 'claude-consult', 'projects');
 const maxBytes = 8 * 1024 * 1024;
 const blockedDirs = new Set(['.git', '.codex', '.claude', '.agents', '.ssh', '.aws', '.azure', '.gnupg', 'node_modules', '.venv', 'venv', '__pycache__']);
@@ -155,10 +152,8 @@ async function exchange(config,payload,timeoutMs,control) {
   if(control && await cancelled(control))
     return {answer:{status:'cancelled',remoteExited:true},sentBytes:0,receivedBytes:0};
   const compressed=gzipSync(Buffer.from(JSON.stringify({...payload,proxy:config.proxy||null})));
-  const bootstrap='import base64,gzip\nREVIEW_REQUEST_GZIP=base64.b64decode("'+compressed.toString('base64')+
-    '")\nexec(gzip.decompress(base64.b64decode("'+(await program).toString('base64')+'")))\n';
-  const input=gzipSync(Buffer.from(bootstrap)).toString('base64')+'\n';
-  const remote="python3 -c 'import sys,base64,gzip;exec(gzip.decompress(base64.b64decode(sys.stdin.buffer.raw.readline())))'";
+  const input=compressed.toString('base64')+'\n';
+  const remote='python3 -u "$HOME/.local/lib/project-consult/remote_review.py"';
   const args=['-T','-p',String(config.port),'-i',config.identityFile,
     '-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes',
     '-o','ForwardAgent=no','-o','ClearAllForwardings=yes','-o','ConnectTimeout=12',

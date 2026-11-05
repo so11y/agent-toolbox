@@ -1,43 +1,98 @@
-# 个人技能与云桌面配套
+# 个人技能与服务器程序
 
-本仓库保存 2026-11-04 用户截图红框中的 7 个个人技能，以及这些技能的脚本、参考资料、界面元数据和云桌面配套文件。
+## 目录归属
 
-| 界面名称 | 目录 |
-| --- | --- |
-| 代码整理 | `skills/tidy-code` |
-| 精简计划文档 | `skills/concise-plan-docs` |
-| 文档约束 | `skills/decision-lock` |
-| 重构 | `skills/audit-refactor-project` |
-| Claude 决策 · Codex 执行 | `skills/claude-consult` |
-| Claude Web | `skills/claude-web` |
-| Code Analysis | `skills/code-analysis` |
+```text
+skills/                         七个技能的唯一源码，说明和界面元数据均为英文
+  claude-web/
+    scripts/vnc.cjs             本地执行，随技能一起安装
+  claude-consult/
+    scripts/                    本地 SSH 调用、心跳发送、停止钩子和会话管理
+    references/
+    tests/                      本地停止测试和可选真实请求测试
+  audit-refactor-project/
+  code-analysis/
+  concise-plan-docs/
+  decision-lock/
+  tidy-code/
+server/                         服务器独立安装的程序及其部署工具
+  claude-consult/
+    remote_review.py            服务器桥接入口
+    run_control.py              服务器心跳超时、取消和进程组清理
+    history.py                  服务器会话历史入口
+  skills.json                   需要安装到 Claude 的技能名称
+  install.py                    服务器安装器
+  deploy.mjs                    本地执行的 SSH 部署入口
+  tests/                        Linux 服务器测试
+cloud-desktop/                  本地云桌面启动工具和连接模板
+```
+
+`skills/` 中的每个目录都是完整技能。`server/skills.json` 只选取技能名称；部署时从 `skills/` 读取源码，安装到服务器。技能源码只维护这一套。
+
+| 界面名称 | 技能源码 | 安装位置 |
+| --- | --- | --- |
+| Repository Audit | `skills/audit-refactor-project` | 本地 Codex、服务器 Claude |
+| Code Analysis | `skills/code-analysis` | 本地 Codex、服务器 Claude |
+| Concise Plan Documents | `skills/concise-plan-docs` | 本地 Codex、服务器 Claude |
+| Decision Lock | `skills/decision-lock` | 本地 Codex、服务器 Claude |
+| Tidy Code | `skills/tidy-code` | 本地 Codex、服务器 Claude |
+| Claude Analysis, Codex Execution | `skills/claude-consult` | 本地 Codex |
+| Claude Web | `skills/claude-web` | 本地 Codex |
 
 Caveman、Find Skills、Codex 自带的 `.system` 技能和插件缓存不在本次范围内。
 
-## 配套内容
+## 本地安装
 
-- `skills/`：来自本机 `D:\codex\home\skills`，包含各技能原有的 `scripts/`、`references/` 和 `agents/`（如有）。
-- `skills/claude-consult/connection.example.json`：不含凭据的连接模板。本机实际的 `connection.json` 只保留在本地，并已加入 `.gitignore`。
-- `server/claude-skills/`：Claude 决策技能在服务器使用的 5 份英文技能副本及 `.project-consult.json` 哈希目录；属于该技能的服务器配套，不另计个人技能数量。文件按原始字节保存，已核验目录中的 SHA-256。
-- `cloud-desktop/`：来自桌面的同名文件夹，保存启动脚本和不含密码的连接说明模板。
+当前机器的个人技能目录为 `D:\codex\home\skills`。把 `skills/` 内这七个完整子目录复制到该机器使用的个人技能目录，保留已有的个人配置。`claude-web` 安装后使用随附的 `scripts/vnc.cjs` 操作现有 noVNC 桌面，需要 Node.js 22+ 和 Chrome/Edge/Chromium，无需额外 npm 包。
 
-## 恢复个人技能
+`claude-consult` 使用随附 Node.js 脚本通过 SSH 调用服务器程序。首次配置时，把 `connection.example.json` 复制为同目录的 `connection.json`，填写 SSH 地址、用户、可执行文件和本机私钥路径。已有 `connection.json` 应保留；它已加入 `.gitignore`，私钥单独保管。
 
-当前机器的个人技能目录为 `D:\codex\home\skills`。在新机器上，把 `skills/` 内这 7 个子目录放入该机器使用的个人技能目录。现有配置有改动时先备份，再替换对应目录。
+停止联动使用技能自带的 `scripts/interrupt.ps1`：
 
-`claude-consult` 需要把 `connection.example.json` 复制为同目录的 `connection.json`，填写 SSH 地址、用户、可执行文件和本机私钥路径。模板中的占位值需要替换；私钥单独保管。当前机器原有技能配置未作改动。
+1. 将 `hooks.example.json` 的 `Interrupt` 和 `SessionEnd` 合并到实际 Codex 配置目录的 `hooks.json`，保留其他钩子。新机器需替换示例中的 PowerShell 和脚本绝对路径。
+2. 在 Codex「设置 → Hooks」中信任这两项，并确认已启用。信任状态由本机管理，不随仓库迁移；变更定义后需重新检查。
 
-`claude-consult` 的停止联动还需要以下配套：
+停止会取消当前远端运行，保留会话供继续使用。接口和恢复流程见 [停止与恢复说明](skills/claude-consult/references/usage.md#stop-interruption-and-recovery)。
 
-1. 把 `skills/claude-consult/scripts/remote_review.py` 和 `run_control.py` 同步到服务器用户的 `~/.local/lib/project-consult/`，保持与本地技能版本一致。
-2. 将 `skills/claude-consult/hooks.example.json` 中的 `Interrupt` 和 `SessionEnd` 配置合并到实际 Codex 配置目录的 `hooks.json`，保留其他钩子。示例使用本机 Windows 路径；新机器需替换 PowerShell 和 `interrupt.ps1` 的绝对路径。
-3. 在 Codex「设置 → Hooks」中信任这两项，并确认已启用。信任状态由本机管理，不随仓库迁移；变更定义后需重新检查。
+## 服务器安装
 
-停止会取消当前远端运行，保留会话供继续使用。脚本测试不等于已验证桌面停止按钮。接口、恢复流程和验证脚本见 [停止与恢复说明](skills/claude-consult/references/usage.md#stop-interruption-and-recovery)。其中 `tests/live_stop_test.mjs` 会发起真实 Claude 请求，仅在需要验证时手动运行。
+服务器使用运行 Claude 的普通用户，需要 Linux、Python 3 和已登录的 Claude CLI。本地从仓库根目录执行：
 
-本地脚本使用 Node.js；`claude-web` 的 VNC 脚本需要 Node.js 22+ 和 Chrome/Edge/Chromium，使用原生 WebSocket，无需额外 npm 包。`claude-consult` 通过 SSH 调用服务器的 Python 3 和已登录的 Claude CLI。随附参考资料保留各技能的具体用法。
+```powershell
+node server/deploy.mjs D:/codex/home/skills/claude-consult/connection.json
+```
 
-如需恢复 Claude 决策的服务器技能，将 `server/claude-skills/` 下的 5 个目录复制到服务器用户的 `~/.claude/skills/`，最后再复制 `.project-consult.json`。目录固定了原始文件哈希，不要转换换行符；本仓库的 `.gitattributes` 已关闭自动换行转换。保留服务器上其他无关技能。
+部署入口读取该连接配置，通过 SSH 把程序和选定技能交给 `server/install.py`。安装目标为：
+
+| 仓库来源 | 服务器安装目标 |
+| --- | --- |
+| `server/claude-consult/*.py` | `~/.local/lib/project-consult/` |
+| 连接配置中的代理地址 | `~/.local/lib/project-consult/history-config.json` |
+| `skills/<server/skills.json 中的名称>/SKILL.md` | `~/.claude/skills/<名称>/SKILL.md` |
+| 安装器生成的描述和 SHA-256 目录 | `~/.claude/skills/.project-consult.json` |
+| 安装器生成的历史启动命令 | `~/.local/bin/claude-history` |
+
+本地 `claude-consult` 每次只发送任务数据，调用已安装的 `remote_review.py`。`run_control.py` 在服务器监测心跳并清理本次运行的进程组。安装器保留服务器上其他无关技能、会话和项目缓存。
+
+修改服务器程序或上述五个共享技能后，重新执行部署命令。更新已有安装时，先结束正在运行的咨询；先部署服务器，再更新本地技能。安装器根据当前技能原始字节生成哈希目录，本仓库通过 `.gitattributes` 保持字节稳定。
+
+## 验证
+
+从仓库根目录运行：
+
+```powershell
+# 本机执行；需要连接配置，使用隔离记录，通过 SSH 验证停止和恢复，不调用模型
+node skills/claude-consult/tests/local_stop_test.mjs D:/codex/home/skills/claude-consult/connection.json
+```
+
+在具有仓库源码的 Linux 环境运行：
+
+```sh
+python3 server/tests/install_test.py
+python3 server/tests/remote_stop_test.py
+```
+
+`skills/claude-consult/tests/live_stop_test.mjs` 接受相同的可选连接配置参数，会发起真实 Claude 请求，仅在需要验证时手动运行。脚本测试不等于已验证桌面停止按钮。
 
 ## 云桌面
 

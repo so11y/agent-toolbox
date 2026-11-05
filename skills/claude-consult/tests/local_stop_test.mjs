@@ -12,7 +12,8 @@ const chatId=randomUUID(),turnId=randomUUID(),otherTurn=randomUUID(),key=randomU
 const store=path.resolve(os.homedir(),'.cache/claude-consult/chats');
 const dir=path.resolve(store,createHash('sha256').update(chatId).digest('hex'));
 const hook=new URL('../scripts/interrupt.ps1',import.meta.url);
-const connection=JSON.parse(await fs.readFile(new URL('../connection.json',import.meta.url),'utf8'));
+const configFile=process.argv[2];
+const connection=JSON.parse(await fs.readFile(configFile || new URL('../connection.json',import.meta.url),'utf8'));
 const checks={};
 function trigger(event,turn) {
   const start=Date.now();
@@ -45,9 +46,9 @@ try {
     title:'停止処理の確認',taskDir:path.join(dir,'task'),started:false,paused:false,attention:false});
   await fs.mkdir(path.join(dir,'operation.lock'));
   await writeRecord(path.join(dir,'operation.lock','owner.json'),{id:randomUUID(),runId:c2.runId});
-  const stopped=await stopChat({chatId});
+  const stopped=await stopChat({chatId,configFile});
   assert.equal(stopped.remoteExited,true);
-  const resumed=await resumeChat({chatId});
+  const resumed=await resumeChat({chatId,configFile});
   assert.equal(resumed.status,'released');
   checks.stale_lock_recovery_with_remote_confirmation=true;
   const same=JSON.parse(await fs.readFile(path.join(dir,'chat.json'),'utf8'));
@@ -55,7 +56,7 @@ try {
   checks.resume_keeps_session_id=true;
   const preCancelledTurn=randomUUID();
   trigger('Interrupt',preCancelledTurn);
-  const stoppedBeforeCall=await consultChat({chatId,turnId:preCancelledTurn,projectRoot:root,task:'No model call should start.'});
+  const stoppedBeforeCall=await consultChat({chatId,configFile,turnId:preCancelledTurn,projectRoot:root,task:'No model call should start.'});
   assert.equal(stoppedBeforeCall.status,'cancelled');
   assert.equal(stoppedBeforeCall.remoteExited,true);
   checks.cancel_before_consult_no_model_request=true;

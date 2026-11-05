@@ -13,7 +13,7 @@ description: >-
   project or several modules, even without the word "refactor" (e.g. "audit
   this repo", "simplify the architecture", "find duplicated logic across
   features", "why is this system slow", "remove dead code and over-defensive
-  checks", "审计/重构/优化整个项目"). Not for single-bug fixes, new features,
+  checks", "audit/refactor/optimize repo"). Not for single-bug fixes, new features,
   single-file cleanup or small local refactors (use tidy-code).
 ---
 

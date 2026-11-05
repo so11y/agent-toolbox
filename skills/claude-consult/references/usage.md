@@ -20,6 +20,8 @@ that binding cannot be guaranteed; do not manufacture one.
 
 ## Normal use
 
+Prepare `titleInJapanese`, `taskInJapanese`, and `updateInJapanese` from the actual user request and observed results before calling the runtime. The example uses the current installation path; substitute the actual Codex home on another machine.
+
 ~~~javascript
 var relay = await import("file:///D:/codex/home/skills/claude-consult/scripts/chats.mjs?updated=" + Date.now());
 var chatId = nodeRepl.requestMeta.threadId;
@@ -27,8 +29,8 @@ var reply = await relay.consultChat({
   chatId,
   turnId: nodeRepl.requestMeta["x-codex-turn-metadata"].turn_id,
   projectRoot: "D:/Projects/example",
-  title: "検索処理の改善",
-  task: "検索処理を確認し、改善方針と検証方法を考えてください。",
+  title: titleInJapanese,
+  task: taskInJapanese,
   include: ["src/", "tests/", "package.json"],
   environment: { os: "Windows", testCommand: "npm test" }
 });
@@ -45,8 +47,8 @@ var next = await relay.consultChat({
   turnId: nodeRepl.requestMeta["x-codex-turn-metadata"].turn_id,
   projectRoot: "D:/Projects/example",
   results: [{actionId:"check-1", command:"npm test", exitCode:1,
-             output:"実際のエラー出力を原文のまま入れる"}],
-  message: "変更を反映しました。このエラーが残っています。次に確認する箇所を教えてください。"
+             output:"Exact original diagnostic output"}],
+  message: updateInJapanese
 });
 await relay.ensureCurrent(next.taskDir);
 ~~~
@@ -70,7 +72,7 @@ saved history has disappeared, restore it rather than starting an empty replacem
   verified existing session into an unbound chat. Never bind an unrelated chat's session
   to a new chat just because its title is similar.
 
-The server's `claude-history` command and Japanese desktop launcher **会話履歴** select
+The server's `claude-history` command and Japanese desktop conversation-history launcher select
 these same saved conversations by title. They use `--resume <ID>` internally. The
 native `/resume` picker still excludes `-p` sessions. The history viewer keeps the
 same read/search-only tool restrictions and holds the project lock for its lifetime.
@@ -146,7 +148,7 @@ Each normal turn uses two SSH connections:
 1. Combine CLI readiness with an inventory of missing/corrupt content hashes.
 2. Send the current file manifest, context/results, and only missing contents, then receive guidance.
 
-Requests and the shipped Python helper are gzip-compressed. The analysis channel stays open for cancellation and heartbeat frames; these small control frames are not included in the reported source/payload byte totals. User content travels as encoded stdin data; none is interpolated into shell commands. There is no background watcher or two-way synchronization.
+Requests are gzip-compressed. The client invokes the installed `~/.local/lib/project-consult/remote_review.py` on the server; it sends no executable source code. The analysis channel stays open for cancellation and heartbeat frames; these small control frames are not included in the reported source/payload byte totals. User content travels as encoded stdin data; none is interpolated into shell commands. There is no background watcher or two-way synchronization.
 
 Project identity is derived from the canonical local project path and destination; only its opaque digest is sent. On Windows, path case does not create a separate identity. Two different checkouts have separate caches even if their repository names match.
 
@@ -160,17 +162,17 @@ Only the latest turn needs a readable source view under `tasks/<task-id>/`. A ne
 
 A lost/corrupt content object is detected by the inventory check and uploaded before model invocation. After an ambiguous failure, inspect local records; do not automatically repeat a potentially billed model call.
 
-Transfer measurements distinguish source bytes from SSH application payload bytes. `sentBytes` includes both compressed requests and the helper bootstrap, excluding SSH handshake/encryption overhead. Zero source upload still sends manifests and context. Network-byte savings do not establish model speed or token savings.
+Transfer measurements distinguish source bytes from SSH application payload bytes. `sentBytes` includes both compressed requests, excluding SSH handshake/encryption overhead. Zero source upload still sends manifests and context. Network-byte savings do not establish model speed or token savings.
 
 ## Shared development skills
 
-The approved server catalog is `~/.claude/skills/.project-consult.json`. It names these five installed skills: `audit-refactor-project`, `code-analysis`, `concise-plan-docs`, `decision-lock`, and `tidy-code`. Each native skill is at `~/.claude/skills/<name>/SKILL.md`; it retains the original English rules with Chinese passages translated into English. Codex-only UI metadata is not installed. Native Claude Code can discover the skills automatically or invoke them with commands such as `/code-analysis` and `/tidy-code`.
+The approved server catalog is `~/.claude/skills/.project-consult.json`. It names these five installed skills: `audit-refactor-project`, `code-analysis`, `concise-plan-docs`, `decision-lock`, and `tidy-code`. Each native skill is at `~/.claude/skills/<name>/SKILL.md`. Both hosts install the same English source maintained once under the repository's `skills/<name>/SKILL.md`. Codex-only UI metadata is not installed. Native Claude Code can discover the skills automatically or invoke them with commands such as `/code-analysis` and `/tidy-code`.
 
 The reasoning loop retains `--restricted` and `--safe-mode`, which disable automatic custom-skill loading. Before each model turn, the helper verifies the approved catalog and copies its exact files into `guides/<name>/SKILL.md` inside the analysis directory. Claude first reads `guides/index.json` and then the relevant skill bodies. This keeps file access inside the turn and exposes no new execution tools. Skills do not override user decisions, task scope, or the requirement to request local edits/tests through actions. English skill text does not change the default Japanese response language.
 
 The result adds `availableSkills` and `guideSetId` for the supplied catalog. Availability does not claim the model actually used every skill. The catalog pins file hashes; changed or missing approved files cause an explicit failure before a model request. If the catalog is absent, the loop proceeds with an empty guide index. A catalog is limited to 64 KiB, each skill to 128 KiB, and the combined bodies to 512 KiB.
 
-Skills are installed once and read on the server, rather than re-uploaded on every project turn. These are synchronized copies: after changing the original local skills, prepare the English copies again, update their catalog hashes/descriptions, and synchronize that bundle. Write the catalog after its skill files and preserve unrelated installed skills. Do not copy credentials, local orchestration files, or the local `claude-consult` controller into the server's skill catalog. Closing/forgetting a project removes its guide snapshots but leaves the installed personal skills intact.
+Skills are installed once and read on the server. `server/skills.json` selects the shared skills to install; it contains names only. Run `server/deploy.mjs` after changing those canonical sources. The installer copies their SKILL.md files and generates `.project-consult.json` from their current descriptions and byte hashes, writing the catalog last. There is no second server skill source tree. It preserves unrelated server skills and never installs the local controller as a Claude skill. Closing/forgetting a project removes its guide snapshots but leaves installed skills intact.
 
 ## Long calls and execution boundary
 
@@ -229,14 +231,12 @@ prove the actual Stop button has been wired up.
   Remote requests already submitted may have incurred usage; process termination
   does not promise a refund or immediate provider-side billing cancellation.
 
-Remote setup now includes `scripts/run_control.py` alongside `remote_review.py`
-under `~/.local/lib/project-consult/`. Keep the installed files in sync with the
-skill. Run IDs, local chat/turn IDs, hook markers, heartbeats, and process records
+Install `server/claude-consult/` under `~/.local/lib/project-consult/` using the repository's server installer. The local scripts remain bundled with this skill. Run IDs, local chat/turn IDs, hook markers, heartbeats, and process records
 are transport metadata, not Claude prompt materials. The existing read-only
 snapshot and Japanese/Chinese language rules remain in force.
 
 Validation helpers:
-- `tests/remote_stop_test.py`: isolated processes; cancellation, EOF, lease expiry,
+- `server/tests/remote_stop_test.py`: isolated processes; cancellation, EOF, lease expiry,
   helper death, descendant cleanup, lock release, and run isolation; no model call.
 - `tests/local_stop_test.mjs`: directly invokes the short PowerShell hook on
   isolated fixtures; verifies correct turn matching, recovery, and stale-result rejection.
