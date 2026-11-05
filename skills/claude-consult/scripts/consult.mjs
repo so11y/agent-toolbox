@@ -10,7 +10,7 @@ export const defaultConnectionFile = path.join(homedir(), '.config', 'agent-tool
 const projectStore = path.join(homedir(), '.cache', 'claude-consult', 'projects');
 const maxBytes = 8 * 1024 * 1024;
 const blockedDirs = new Set(['.git', '.codex', '.claude', '.agents', '.ssh', '.aws', '.azure', '.gnupg', 'node_modules', '.venv', 'venv', '__pycache__']);
-const blockedNames = new Set(['agents.md', 'claude.md', 'skill.md', '.npmrc', '.pypirc', 'credentials', 'credentials.json', 'id_rsa', 'id_ed25519']);
+const blockedNames = new Set(['claude.md', 'skill.md', '.npmrc', '.pypirc', 'credentials', 'credentials.json', 'id_rsa', 'id_ed25519']);
 const digest = b => createHash('sha256').update(b).digest('hex');
 const json = x => JSON.stringify(x, null, 2) + '\n';
 
