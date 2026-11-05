@@ -1,9 +1,8 @@
 import fs from 'node:fs/promises';
 import { spawn } from 'node:child_process';
+import { loadConnection } from '../skills/claude-consult/scripts/consult.mjs';
 
-const configFile = process.argv[2];
-if (!configFile) throw new Error('Usage: node server/deploy.mjs PATH_TO_CONNECTION_JSON');
-const config = JSON.parse(await fs.readFile(configFile, 'utf8'));
+const config = await loadConnection(process.argv[2]);
 const names = JSON.parse(await fs.readFile(new URL('./skills.json', import.meta.url), 'utf8'));
 const skills = await Promise.all(names.map(async name => {
   const body = await fs.readFile(new URL('../skills/' + name + '/SKILL.md', import.meta.url));

@@ -2,11 +2,10 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { homedir } from 'node:os';
 import { createHash, randomUUID } from 'node:crypto';
-import { consult, chatAction } from './consult.mjs';
+import { consult, chatAction, loadConnection } from './consult.mjs';
 import { beginRun, finishRun, cancelled, writeRecord } from './local_control.mjs';
 
 const store = path.join(homedir(), '.cache', 'claude-consult', 'chats');
-const defaults = new URL('../connection.json', import.meta.url);
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function location(chatId) {
   if (!uuid.test(chatId || '')) throw new Error('Pass the actual Codex threadId; do not invent a chat identifier.');
@@ -39,8 +38,7 @@ async function locked(chatId, fn) {
 }
 async function identity(projectRoot, configFile) {
   const root = await fs.realpath(projectRoot);
-  const configPath = configFile ? path.resolve(configFile) : defaults;
-  const c = JSON.parse(await fs.readFile(configPath, 'utf8'));
+  const c = await loadConnection(configFile);
   return {root, destination:c.user + '@' + c.host.toLowerCase() + ':' + c.port};
 }
 async function entryFor(dir, entry, options) {

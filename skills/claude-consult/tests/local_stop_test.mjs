@@ -6,6 +6,7 @@ import {spawnSync} from 'node:child_process';
 import assert from 'node:assert/strict';
 import {beginRun,cancelled,writeRecord} from '../scripts/local_control.mjs';
 import {consultChat,resumeChat,stopChat,ensureCurrent} from '../scripts/chats.mjs';
+import {loadConnection} from '../scripts/consult.mjs';
 
 const root=await fs.mkdtemp(path.join(os.tmpdir(),'claude-stop-local-'));
 const chatId=randomUUID(),turnId=randomUUID(),otherTurn=randomUUID(),key=randomUUID(),sessionId=randomUUID();
@@ -13,7 +14,7 @@ const store=path.resolve(os.homedir(),'.cache/claude-consult/chats');
 const dir=path.resolve(store,createHash('sha256').update(chatId).digest('hex'));
 const hook=new URL('../scripts/interrupt.ps1',import.meta.url);
 const configFile=process.argv[2];
-const connection=JSON.parse(await fs.readFile(configFile || new URL('../connection.json',import.meta.url),'utf8'));
+const connection=await loadConnection(configFile);
 const checks={};
 function trigger(event,turn) {
   const start=Date.now();

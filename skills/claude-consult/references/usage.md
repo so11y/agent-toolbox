@@ -91,6 +91,13 @@ summary into the new chat's separate conversation.
 
 ## Connection and low-level helpers
 
+The default machine-local configuration is `~/.config/agent-toolbox/claude-consult.json`.
+Keep it outside the skill directory so linked installations share source code while
+retaining machine settings. `configFile` accepts an explicit alternative path.
+The repository's `install.mjs` migrates an existing Codex skill's `connection.json`
+when the new configuration does not yet exist. New installations use the bundled
+`connection.example.json` as a template for that external file.
+
 The configured server is `desktop@43.133.218.55`. SSH uses the existing executable
 and key path; host checking remains on and forwarding stays off. Remote CLI requests
 use the existing loopback HTTP proxy `http://127.0.0.1:8118`.

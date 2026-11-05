@@ -18,7 +18,7 @@ This local skill includes its local scripts. Its server dependency is installed 
 
 ## Sharing and language
 
-Use the selected project and [connection.json](connection.json). Share relevant source, configuration templates, a useful project outline, accurate environment facts, and actual results. Keep credentials, personal files, Codex conversations/internal reasoning, local orchestration records, and SSH configuration out of the shared materials. Preserve relevant diagnostic facts and tool references already present in the project's code.
+Use the selected project and the machine-local connection file at `~/.config/agent-toolbox/claude-consult.json`; see the [connection template](connection.example.json). An explicit `configFile` overrides this default. Share relevant source, configuration templates, a useful project outline, accurate environment facts, and actual results. Keep credentials, personal files, Codex conversations/internal reasoning, local orchestration records, and SSH configuration out of the shared materials. Preserve relevant diagnostic facts and tool references already present in the project's code.
 
 Write task descriptions and progress messages in natural, concise Japanese unless the user requests another language. Describe what changed, what was observed, and what needs checking, like an ordinary development conversation. For a failed check, say what changed, provide the actual error, and ask which part to inspect next. Use wording appropriate to the actual result, not a canned report.
 

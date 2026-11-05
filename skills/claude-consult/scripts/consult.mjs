@@ -6,7 +6,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { gzipSync } from 'node:zlib';
 
-const defaults = new URL('../connection.json', import.meta.url);
+export const defaultConnectionFile = path.join(homedir(), '.config', 'agent-toolbox', 'claude-consult.json');
 const projectStore = path.join(homedir(), '.cache', 'claude-consult', 'projects');
 const maxBytes = 8 * 1024 * 1024;
 const blockedDirs = new Set(['.git', '.codex', '.claude', '.agents', '.ssh', '.aws', '.azure', '.gnupg', 'node_modules', '.venv', 'venv', '__pycache__']);
@@ -96,7 +96,7 @@ async function readJson(file) {
   catch (error) { if (error.code === 'ENOENT') return null; throw error; }
 }
 
-async function configuration(configFile = defaults) {
+export async function loadConnection(configFile = defaultConnectionFile) {
   const c = JSON.parse(await fs.readFile(configFile, 'utf8'));
   if (!/^[A-Za-z0-9.-]+$/.test(c.host) || !/^[a-z_][a-z0-9_-]*$/i.test(c.user) || c.user === 'root') {
     throw new Error('Use a non-root SSH account and a plain host name or IP.');
@@ -107,7 +107,7 @@ async function configuration(configFile = defaults) {
 
 async function projectIdentity(projectRoot, configFile) {
   const root = await fs.realpath(projectRoot);
-  const config = await configuration(configFile);
+  const config = await loadConnection(configFile);
   const destination = config.user + '@' + config.host.toLowerCase() + ':' + config.port;
   const projectId = digest(JSON.stringify([path.sep === '\\' ? root.toLowerCase() : root, destination]));
   return { root, config, destination, projectId, projectFile: path.join(projectStore, projectId + '.json') };
@@ -166,7 +166,7 @@ async function exchange(config,payload,timeoutMs,control) {
 }
 
 export async function doctor(configFile) {
-  return (await exchange(await configuration(configFile), { action: 'doctor' }, 70000)).answer;
+  return (await exchange(await loadConnection(configFile), { action: 'doctor' }, 70000)).answer;
 }
 
 /** One sequential reasoning turn. Project sharing persists; each task has its own Claude conversation. */
@@ -280,7 +280,7 @@ export async function close({ taskDir, configFile }) {
   const stateFile = path.join(taskDir, 'state.json');
   const state = await readJson(stateFile);
   if (!state || state.version !== 3) throw new Error('No current-version task state found.');
-  const config = await configuration(configFile);
+  const config = await loadConnection(configFile);
   if (state.destination !== config.user + '@' + config.host.toLowerCase() + ':' + config.port) throw new Error('Server changed.');
   const { answer } = await exchange(config, { action: 'close', projectId: state.projectId, workspaceId: state.workspaceId }, 30000);
   if (answer.status === 'closed') {
@@ -300,5 +300,5 @@ export async function forgetProject({ projectRoot, configFile }) {
 
 export async function chatAction(payload, configFile, timeoutMs = 45000) {
   if (!['history_open','history_release','history_register','history_list','run_cancel','run_status'].includes(payload.action)) throw new Error('Invalid history action.');
-  return (await exchange(await configuration(configFile), payload, timeoutMs)).answer;
+  return (await exchange(await loadConnection(configFile), payload, timeoutMs)).answer;
 }

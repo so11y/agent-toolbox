@@ -1,4 +1,6 @@
-# 个人技能与服务器程序
+# agent-toolbox
+
+个人 Agent 技能与服务器配套程序。仓库位于 `D:\code\agent-toolbox`，GitHub 仓库为 [so11y/agent-toolbox](https://github.com/so11y/agent-toolbox)。
 
 ## 目录归属
 
@@ -25,17 +27,19 @@ server/                         服务器独立安装的程序及其部署工具
   deploy.mjs                    本地执行的 SSH 部署入口
   tests/                        Linux 服务器测试
 cloud-desktop/                  本地云桌面启动工具和连接模板
+install.mjs                     本地技能目录链接安装器
+tests/                          本地安装器的隔离测试
 ```
 
 `skills/` 中的每个目录都是完整技能。`server/skills.json` 只选取技能名称；部署时从 `skills/` 读取源码，安装到服务器。技能源码只维护这一套。
 
 | 界面名称 | 技能源码 | 安装位置 |
 | --- | --- | --- |
-| Repository Audit | `skills/audit-refactor-project` | 本地 Codex、服务器 Claude |
-| Code Analysis | `skills/code-analysis` | 本地 Codex、服务器 Claude |
-| Concise Plan Documents | `skills/concise-plan-docs` | 本地 Codex、服务器 Claude |
-| Decision Lock | `skills/decision-lock` | 本地 Codex、服务器 Claude |
-| Tidy Code | `skills/tidy-code` | 本地 Codex、服务器 Claude |
+| Repository Audit | `skills/audit-refactor-project` | Codex、Cursor、Claude |
+| Code Analysis | `skills/code-analysis` | Codex、Cursor、Claude |
+| Concise Plan Documents | `skills/concise-plan-docs` | Codex、Cursor、Claude |
+| Decision Lock | `skills/decision-lock` | Codex、Cursor、Claude |
+| Tidy Code | `skills/tidy-code` | Codex、Cursor、Claude |
 | Claude Analysis, Codex Execution | `skills/claude-consult` | 本地 Codex |
 | Claude Web | `skills/claude-web` | 本地 Codex |
 
@@ -43,9 +47,25 @@ Caveman、Find Skills、Codex 自带的 `.system` 技能和插件缓存不在本
 
 ## 本地安装
 
-当前机器的个人技能目录为 `D:\codex\home\skills`。把 `skills/` 内这七个完整子目录复制到该机器使用的个人技能目录，保留已有的个人配置。`claude-web` 安装后使用随附的 `scripts/vnc.cjs` 操作现有 noVNC 桌面，需要 Node.js 22+ 和 Chrome/Edge/Chromium，无需额外 npm 包。
+从仓库根目录执行：
 
-`claude-consult` 使用随附 Node.js 脚本通过 SSH 调用服务器程序。首次配置时，把 `connection.example.json` 复制为同目录的 `connection.json`，填写 SSH 地址、用户、可执行文件和本机私钥路径。已有 `connection.json` 应保留；它已加入 `.gitignore`，私钥单独保管。
+```powershell
+node install.mjs codex cursor
+```
+
+安装器给完整技能目录建立链接：Windows 使用 Junction，其他系统使用目录符号链接。修改仓库文件后，工具通过链接读取同一份源码；通过链接编辑也会修改仓库。
+
+| 工具 | 安装入口 | 技能选择 |
+| --- | --- | --- |
+| Codex | `$CODEX_HOME/skills/`，未设置时为 `~/.codex/skills/` | 七个技能；本机入口为 `D:\codex\home\skills` |
+| Cursor | `~/.cursor/skills/` | 表中的五个开发技能 |
+| 本地 Claude | `~/.claude/skills/` | 五个开发技能；显式运行 `node install.mjs claude` 安装 |
+
+省略参数时安装 Codex 和 Cursor。原有同名目录移到各工具真实配置目录中的 `skill-backups/<时间>/`，与技能入口位于同一磁盘并处于扫描目录之外；其他技能、`.system` 和插件保持原位。重复执行会保留正确的链接。移动仓库后重新运行安装器，更新链接目标。
+
+`claude-consult` 的本机连接配置保存在 `~/.config/agent-toolbox/claude-consult.json`，独立于仓库与链接。首次安装会从旧 Codex 技能目录中的 `connection.json` 迁移配置，保留已有的新配置。新机器使用 `skills/claude-consult/connection.example.json` 填写该文件，设置 SSH 地址、用户、可执行文件和私钥路径；私钥单独保管。运行接口的 `configFile` 参数和服务器部署命令的可选参数可指定其他配置文件。
+
+`claude-web` 使用随附的 `scripts/vnc.cjs` 操作现有 noVNC 桌面，需要 Node.js 22+ 和 Chrome/Edge/Chromium，无需额外 npm 包。
 
 停止联动使用技能自带的 `scripts/interrupt.ps1`：
 
@@ -59,10 +79,10 @@ Caveman、Find Skills、Codex 自带的 `.system` 技能和插件缓存不在本
 服务器使用运行 Claude 的普通用户，需要 Linux、Python 3 和已登录的 Claude CLI。本地从仓库根目录执行：
 
 ```powershell
-node server/deploy.mjs D:/codex/home/skills/claude-consult/connection.json
+node server/deploy.mjs
 ```
 
-部署入口读取该连接配置，通过 SSH 把程序和选定技能交给 `server/install.py`。安装目标为：
+部署入口读取上述本机连接配置，也可通过第一个参数指定其他配置文件，通过 SSH 把程序和选定技能交给 `server/install.py`。安装目标为：
 
 | 仓库来源 | 服务器安装目标 |
 | --- | --- |
@@ -81,8 +101,11 @@ node server/deploy.mjs D:/codex/home/skills/claude-consult/connection.json
 从仓库根目录运行：
 
 ```powershell
+# 隔离的链接安装、配置迁移和重复安装测试
+node --test tests/install_test.mjs
+
 # 本机执行；需要连接配置，使用隔离记录，通过 SSH 验证停止和恢复，不调用模型
-node skills/claude-consult/tests/local_stop_test.mjs D:/codex/home/skills/claude-consult/connection.json
+node skills/claude-consult/tests/local_stop_test.mjs
 ```
 
 在具有仓库源码的 Linux 环境运行：
