@@ -21,7 +21,7 @@ description: >-
 
 Produce the simplest coherent end state that fully supports required behavior. Judge simplicity by the final concepts, states, branches, APIs, call hops, dependencies and ownership boundaries, not by diff size or effort.
 
-Behavior is required only when backed by a production caller, external contract, domain rule, or current user direction. Tests are evidence of those requirements, not automatic authority for special production handling.
+Establish required behavior from current user direction, authoritative API/domain contracts and intended production workflows. Existing callers and tests are evidence; a caller can violate the contract, and a test does not authorize extra side effects or special production handling.
 
 ## Modes
 
@@ -35,16 +35,7 @@ Local implementation rules live in `tidy-code`; this skill adds the system-level
 
 ### Local Rules
 
-Apply the `tidy-code` contract to every change: caller-first APIs (one intent, one call, one coherent publication), no failure machinery without an explicit contract, fix problems at the producer, trust established invariants, and reuse canonical utilities. Read `tidy-code` before the first edit.
-
-If `tidy-code` is not installed, hold to this minimum:
-
-- One common intent is one direct call; do not export filtering, bookkeeping or extra commits to callers.
-- Keep a runtime defense only when the production call graph shows a reachable producer of the rejected state and required handling. A public API alone does not justify validating caller misuse; validate external data once at its boundary.
-- Invalid internal state is an owner, sequencing or type problem: fix the producer, not the consumers.
-- Let failures surface. No rollback, retry, atomicity, locks, custom errors or catch-and-continue without an explicit contract.
-- Tests may probe unsupported usage to show failures stay visible; they never justify production checks or exact error-text assertions.
-- Keep boundaries that own real semantics: security, transactions, cancellation, concurrency, cleanup, persistence, required error translation.
+Read and apply [tidy-code](../tidy-code/SKILL.md) before the first edit. It owns the local caller, publication, failure and trust rules, including callback permissions and test boundaries in [Source and trust](../tidy-code/SKILL.md#source-and-trust). This skill adds the repository-wide tracing and cross-feature checks below.
 
 ### Cross-Feature Consistency Contract
 
@@ -73,7 +64,11 @@ Resolve the repo root, applicable instructions, worktree state and scope; preser
 
 ### 2. Trace
 
-Follow each relevant entry point to its final side effect and response, through orchestration, domain logic, state, persistence, external services and output mapping. For every guard, fallback, assertion, validation, optional chain or catch-and-continue, trace back to where the invariant is established and judge it against the producer, not in isolation. Map public APIs, config knobs, compatibility paths, pass-through wrappers, dependency direction, duplicated sources of truth, hidden globals and import-time effects. Compare production callers with tests and docs. Absence of in-repo callers or a theoretical edge case does not prove a need for handling. Check authorization, sensitive data, resource limits and injection only where the system actually exposes them.
+Follow each relevant entry point to its final side effect and response, through orchestration, domain logic, state, persistence, external services and output mapping. Map each API's responsibility, read/write ownership, permitted calls and applicable lifecycle or phase before analyzing callbacks or overrides.
+
+For each callback or continuation guard, apply tidy-code's Source and trust in order: confirm the operation is permitted, trace a reachable supported sequence, demonstrate the harmful result, then identify the layer responsible for handling it. Inspect writes, notifications and resource releases after the boundary as well as partial state before it. Check every legitimate boundary served by a shared guard before removing it. Record unclear permissions as evidence gaps; do not redefine the contract to justify keeping or deleting code.
+
+For other guards, fallbacks, assertions, validation, optional chains or catch-and-continue, trace where the invariant is established and judge the handling against its producer and contract. Map config knobs, compatibility paths, pass-through wrappers, dependency direction, duplicated sources of truth, hidden globals and import-time effects. Compare callers with tests and docs. Check authorization, sensitive data, resource limits and injection only where the system actually exposes them.
 
 ### 3. Classify and Rank
 
@@ -97,7 +92,7 @@ Use `tidy-code` for local shape and the final readability pass (nesting, forward
 
 ### 5. Verify
 
-Format changed files, iterate with focused tests, then run the broadest practical type-check, lint, tests, build, docs and end-to-end checks. Separate pre-existing failures from regressions; if a check cannot run, state the exact blocker. Add unsupported or rare-usage probes when useful, but never add production checks or recovery solely for them.
+Format changed files, iterate with focused tests, then run the broadest practical type-check, lint, tests, build, docs and end-to-end checks. Separate pre-existing failures from regressions; if a check cannot run, state the exact blocker. Select tests using tidy-code's Source and trust rules; preserve rare supported sequences and required error behavior, and migrate tests that only enforce excluded behavior with the obsolete implementation.
 
 Re-check the Cross-Feature Consistency Contract against production flows: one owner per shared rule, no parallel normalization/validation/defaulting/filtering/ordering/conversion/publication/persistence left, no weakened types or invariants, no universal processor or compatibility layer standing in for domain concepts. Tests should cover the canonical stage once and each consumer's distinct derivation.
 

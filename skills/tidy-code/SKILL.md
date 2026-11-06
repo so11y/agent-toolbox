@@ -50,8 +50,10 @@ Otherwise let failures surface and propagate naturally. Catch, translate, retry,
 - After an invariant is established by construction, parsing, initialization, an authoritative boundary or a required prior step, use the canonical value directly: no repeated validation, cloning, assertions, optional checks, fallbacks or catch-and-continue.
 - Clone only when required behavior needs independent ownership, mutation isolation or a distinct lifetime.
 - Validate external, deserialized, third-party, unsafe or security-sensitive data once, when a format, security, domain or external contract requires it. A public API alone does not justify validating every possible misuse.
-- Keep a runtime defense only when the production call graph shows both a concrete reachable producer of the rejected state and required handling at this layer. If the invariant is uncertain, inspect the call graph and report it; do not answer uncertainty with speculative machinery.
-- Tests may probe unsupported or rare usage to prove failures stay visible. Assert the natural throw or stable invariant; never add production validation, recovery or custom errors, or assert exact incidental error text, just to satisfy a probe.
+- Establish each API or callback's responsibility, readable state, permitted writes and calls, and applicable lifecycle or execution phase before judging a guard. Visibility, overridability, a shared phase or a test callback does not grant extra effects.
+- Keep a runtime defense only when a concrete reachable producer and required handling at this layer justify it. A reentrancy or stale-work guard additionally needs a permitted operation, a reachable supported sequence, and evidence that old work can damage current state. Prefer existing ownership, relationships and reference identity; remove only checks whose supported purpose has been ruled out, including shared purposes across different callbacks.
+- If the contract is unclear, record the missing evidence. Do not invent defensive behavior or declare a use unsupported merely to remove a check. Existing callers and tests are evidence, not authority to override the contract; absence of an in-repo caller does not exclude supported public use.
+- Test rare but supported workflows, including legal re-entry and required error propagation. Document explicitly excluded calls as contract limits; do not turn them into guarantees of success, rejection, ignoring the call or recovery. Preserve rejection or cleanup tests when an authoritative error or safety contract requires that behavior. Never add production checks or assert incidental error text merely to satisfy a probe; migrate tests that only preserve excluded behavior with the obsolete support code.
 
 ## Inspect before editing
 
@@ -88,7 +90,7 @@ Removing wasted work is part of tidying, not a separate activity.
 
 ## Refactor completely
 
-1. Capture required behavior and useful natural-failure probes with focused tests where coverage is thin.
+1. Capture supported workflows and required error propagation with focused tests where coverage is thin, following Source and trust.
 2. Trace callers, producers, publications and invariant boundaries; identify the canonical owner and contract.
 3. Fix the owner, source contract, data shape, API, publication order and error behavior rather than adding downstream workarounds.
 4. Migrate every in-scope caller and test.
@@ -104,7 +106,7 @@ Run the formatter and proportionate type-check, lint, tests and build. Then conf
 
 - callers express each common intent with one direct call and do none of the filtering, bookkeeping, sequencing, batching or notification suppression the API should own;
 - mixed updates are interpreted once, and hooks and observers run only after the writes they must observe;
-- every remaining runtime check has a reachable producer and required handling; no speculative guard, clone, fallback, assertion, optional chain or catch-and-continue remains;
+- every remaining runtime check has a reachable producer and required handling; callback and continuation guards also meet the permission and stale-work conditions in Source and trust; no speculative guard, clone, fallback, assertion, optional chain or catch-and-continue remains;
 - no rollback, retry, atomicity, lock, recovery or custom error machinery exists without an explicit contract;
 - canonical utilities replace hand-written equivalents, and no duplicate helper, forwarding wrapper, alias or parallel API remains;
 - no avoidable repeated work remains in the touched flow, and any performance claim is backed by a measurement;

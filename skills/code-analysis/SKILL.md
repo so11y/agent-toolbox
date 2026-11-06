@@ -40,12 +40,15 @@ Report only a stage that is dominant or roughly 20% or more of the total (unless
 
 ## Reentrancy and concurrency
 
-1. Find the **inconsistent window**: the span between the first and last write of related state. Note any external code that runs inside it (callbacks, observers, awaits, I/O, external calls), and any check-then-act that spans an `await`.
-2. Check whether the window is already closed by ordering, such as all writes finished before hooks run. If so, there is no finding.
-3. Find who can re-enter, and confirm that path is reachable in production by tracing callers.
-4. Write the interleaving: which call is interrupted at which line, what re-enters and how, what state it sees or overwrites, and the wrong result.
+1. Establish what the API, hook or callback permits: its responsibility, readable state, allowed writes and calls, and lifecycle or execution phase where relevant. Use the authoritative contract and intended production role. Visibility, overridability, a shared phase or a test that can make the call is not permission. If permission is unclear, report the missing contract evidence; do not invent permission or declare a use unsupported to dismiss it.
+2. Trace a normal supported call sequence through the relevant callback, observer, await or external call. Confirm how the operation can occur in production; an existing caller can itself violate the contract, and absence of an in-repo caller alone does not exclude a supported public use.
+3. Locate both partially updated state and reads carried across the boundary. Identify which later writes, notifications or resource releases depend on those earlier reads.
+4. Check whether ordering or current state already makes the sequence correct. Finishing related writes before a hook closes an inconsistent observation window; it does not by itself prove that the old flow can safely continue after a permitted callback establishes new state.
+5. Write the concrete sequence: where control leaves, which permitted operation runs, what state changes, where old work resumes, and the exact wrong result.
 
-Report only if you can complete step 4 for a reachable path. Otherwise give at most one line, or nothing. Do one pass: no enumerating hypothetical interleavings, no threading analysis for single-threaded code beyond `await` interleaving, and no importing smart-contract reentrancy unless the code is a contract. The usual fix direction is ordering (finish the writes before notifying), not locks or flags.
+Report a runtime finding only when the operation is permitted, the supported sequence is reachable, and the harmful result is demonstrated. Explicitly excluded calls belong in the scope explanation, not in runtime findings or proposals for extra guards. An unresolved permission question stays unresolved; do not report it as proof of safety.
+
+Do one pass, without hypothetical interleaving inventories. In single-threaded code, follow actual synchronous callbacks and await continuations rather than inventing parallel execution; use smart-contract reentrancy concepts only for contracts. Prefer completing related writes before notification. For proven stale work, use current ownership, relationships or existing reference identity to decide whether the old flow may continue; do not assume new locks or flags are needed.
 
 ## Reporting threshold
 
