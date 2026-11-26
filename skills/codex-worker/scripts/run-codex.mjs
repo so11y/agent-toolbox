@@ -164,7 +164,6 @@ export function buildCodexInvocation(options = {}, env = process.env) {
     effort,
     persist,
     stdinPrompt,
-    timeoutMs: Number(options.timeoutMs) > 0 ? Number(options.timeoutMs) : null,
     capacityThreshold: Number.isInteger(options.capacityThreshold) && options.capacityThreshold >= 1
       ? options.capacityThreshold
       : DEFAULT_CAPACITY_THRESHOLD
@@ -281,7 +280,6 @@ export async function runCodex(options = {}, env = process.env) {
     let stderrLineBuf = '';
     let stdoutCapacityHits = 0;
     let stderrCapacityHits = 0;
-    let timedOut = false;
     let capacityAborted = false;
     let settled = false;
 
@@ -306,15 +304,6 @@ export async function runCodex(options = {}, env = process.env) {
       for (const line of lines) checkCapacityLine(line, isStdout);
     };
 
-    let timer = null;
-    if (invocation.timeoutMs != null) {
-      timer = setTimeout(() => {
-        timedOut = true;
-        killProcessTree(child);
-      }, invocation.timeoutMs);
-      timer.unref();
-    }
-
     child.stdout.setEncoding('utf8');
     child.stderr.setEncoding('utf8');
     child.stdout.on('data', (chunk) => {
@@ -329,7 +318,6 @@ export async function runCodex(options = {}, env = process.env) {
     const finish = (exitCode, spawnError = null) => {
       if (settled) return;
       settled = true;
-      if (timer) clearTimeout(timer);
       if (stdoutLineBuf) checkCapacityLine(stdoutLineBuf, true);
       if (stderrLineBuf) checkCapacityLine(stderrLineBuf, false);
       const parsed = parseJsonlOutput(stdout);
@@ -339,14 +327,12 @@ export async function runCodex(options = {}, env = process.env) {
       if (capacityAborted) {
         errors.push(`Aborted after ${capacityErrorCount} model-at-capacity errors ("Selected model is at capacity. Please try a different model.").`);
       }
-      if (timedOut) errors.push(`Timed out after ${invocation.timeoutMs} ms.`);
       const trimmedStderr = stderr.trim();
       resolve({
-        ok: !timedOut && !capacityAborted && !spawnError && exitCode === 0,
+        ok: !capacityAborted && !spawnError && exitCode === 0,
         mode: invocation.mode,
         effort: invocation.effort,
         exitCode: exitCode ?? 1,
-        ...(timedOut ? { timedOut: true } : {}),
         ...(capacityAborted ? { abortedReason: 'model_at_capacity' } : {}),
         ...(capacityErrorCount > 0 ? { capacityErrorCount } : {}),
         sessionId: parsed.sessionId,

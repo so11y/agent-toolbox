@@ -51,7 +51,7 @@ Read [references/usage.md](references/usage.md) for full options and examples. A
 '@ | node "D:/code/agent-toolbox/skills/codex-worker/scripts/run-codex.mjs"
 ```
 
-Resolve `scripts/run-codex.mjs` relative to this skill's directory. By default the wrapper waits until Codex finishes naturally with no kill timeout, then prints a single compact JSON summary (`ok`, `mode`, `exitCode`, `sessionId`, `durationMs`, `lastMessage`, `usage`, `errors`).
+Resolve `scripts/run-codex.mjs` relative to this skill's directory. The wrapper waits until Codex finishes naturally with no kill timeout, then prints a single compact JSON summary (`ok`, `mode`, `exitCode`, `sessionId`, `durationMs`, `lastMessage`, `usage`, `errors`). Never wrap `run-codex.mjs` in an artificial short kill timeout (such as 240s or 300s), and never downgrade `execute` or `resume` below `max` merely because a run takes several minutes—let it run to completion and judge by `ok` and `exitCode`.
 
 ## Prompting contract
 
@@ -71,4 +71,4 @@ Treat Codex output as a worker report, not proof of completion:
 - After **`execute`**, inspect `git status` and `git diff` in the workspace (or worktree) and confirm reported verification results before telling the user the work is done.
 - After **`analyze`** or **`review`**, spot-check critical file paths, symbols, or claims before acting on them.
 - If Codex repeatedly reports `Selected model is at capacity. Please try a different model.` (whether aborted automatically by `run-codex.mjs` with `abortedReason: "model_at_capacity"`, or observed across retries/consecutive runs), **stop the task immediately and report it to the user**. Do not keep retrying the same model, do not silently switch to another model on your own, and do not launch further Codex runs until the user says how to proceed.
-- If a run fails, times out, or returns `ok: false`, inspect the exact error and workspace state before retrying; do not silently loop identical failing calls.
+- If a run fails or returns `ok: false`, inspect the exact error and workspace state before retrying; do not silently loop identical failing calls.
