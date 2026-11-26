@@ -1,6 +1,6 @@
 ---
 name: claude-web
-description: Translate conversations through Claude Web over noVNC. Translate the user's Chinese messages into Japanese, send them, read the replies, and translate them back into Chinese. Supports new chats, history selection, and follow-up messages while the mode is active. Use for Claude Web, VNC translation conversations, and explicit continuation of this mode.
+description: Relay conversations through Claude Web over noVNC by translating the user's Chinese messages into Japanese, sending them, reading the replies, and translating them back into Chinese. Supports new chats, history selection, and follow-up messages while the mode is active. Use for Claude Web, VNC translation conversations, and explicit continuation of this mode.
 ---
 
 # Claude Web Translator
@@ -50,7 +50,7 @@ After a timeout or delayed UI update, check whether the message arrived before s
 
 ## VNC control
 
-Read [the VNC instructions](references/vnc.md) first. This is a locally installed skill: its bundled `scripts/vnc.cjs` runs locally and controls the existing noVNC desktop. Reuse connections; the script retains browser sessions across calls without relying on temporary chat variables. Prefer available browser tools when appropriate; the bundled Node script is verified in this environment.
+Read [the VNC instructions](references/vnc.md) first. Its bundled `scripts/vnc.cjs` runs locally to control the existing noVNC desktop. Reuse connections; the script retains browser sessions across calls without relying on temporary chat variables. Prefer available browser tools when appropriate; the bundled Node script is verified in this environment.
 
 noVNC is a remote desktop canvas. Local DOM/CDP cannot directly read the Claude DOM in remote Firefox. Locate controls from current screenshots; do not hardcode old coordinates, titles, or chat IDs. When copying a reply, verify that the clipboard revision changed and the content belongs to that reply.
 

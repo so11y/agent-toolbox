@@ -1,13 +1,13 @@
 ---
 name: claude-consult
-description: Use when the user wants remote Claude Code to lead reasoning and decide the next investigation, implementation, or verification steps while local Codex executes them and reports real results. Reuses selected project sources across tasks and binds each Codex chat to one persistent Claude conversation and manages its history.
+description: Use when the user wants remote Claude Code to lead reasoning and decide the next investigation, implementation, or verification steps while local Codex executes them and reports real results. Reuses selected project sources across tasks, binds each Codex chat to one persistent Claude conversation, and manages its history.
 ---
 
 # Claude Consult
 
 Claude Code leads the technical reasoning throughout the task. Codex carries out the next bounded batch of work locally and returns evidence. Continue until the user's acceptance conditions are met; do not reduce Claude's role to a one-off review of a locally chosen solution.
 
-This local skill includes its local scripts. Its server dependency is installed separately from the repository's `server/claude-consult/` into `~/.local/lib/project-consult/`. No server executable is bundled into the skill.
+This skill bundles its local scripts. Its server dependency is installed separately from the repository's `server/claude-consult/` into `~/.local/lib/project-consult/`. No server executable is bundled into the skill.
 
 ## Roles and authority
 
@@ -22,7 +22,7 @@ Use the selected project and the machine-local connection file at `~/.config/age
 
 Write task descriptions and progress messages in natural, concise Japanese unless the user requests another language. Describe what changed, what was observed, and what needs checking, like an ordinary development conversation. For a failed check, say what changed, provide the actual error, and ask which part to inspect next. Use wording appropriate to the actual result, not a canned report.
 
-Report conclusions and actual execution progress to the user in Chinese unless the user requests another language. Keep paths, code, commands, error text, exit codes, and test counts exact. Structured fields remain structured. Do not add artificial typos, personal anecdotes, claims of manual authorship, invented results, or promises that automation cannot be inferred.
+Report conclusions and actual execution progress to the user in Chinese unless the user requests another language. Keep paths, code, commands, error text, exit codes, and test counts exact. Structured fields remain structured. Do not add artificial typos, personal anecdotes, claims of manual authorship, invented results, or claims that automated use cannot be detected.
 
 ## Shared development skills
 

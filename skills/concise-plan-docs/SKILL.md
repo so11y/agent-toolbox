@@ -50,7 +50,7 @@ Use labels only where a passage's role is not obvious from its section. Do not t
 - Evidence: `FACT`, `RECORD`.
 - Verification claims: `EXECUTED`, `PLANNED`, `NOT_CHECKED`, stated accurately.
 
-Keep "must", "will do", "observed", "suggested" and "completed" in distinct voices.
+Keep normative ("must"), planned ("will do"), observed, suggested, and completed statements distinct.
 
 ## Change modes
 
@@ -84,7 +84,7 @@ Trace repeated concepts to their best owner, move material to the correct role, 
 
 ## Scope and stopping
 
-Before editing, note the requested deliverable, authorized mutations, governing contract and non-goals. Do not grow a plan change into a spec change, or a spec change into repository-wide cleanup, without authorization. Repository-wide wording sync is never an implicit completion condition. A one-passage change stops after that passage and its necessary active conflicts are correct; unrelated metadata, headings, summaries and history stay untouched.
+Before editing, note the requested deliverable, authorized mutations, governing contract and non-goals. Do not grow a plan change into a spec change, or a spec change into repository-wide cleanup, without authorization. Repository-wide wording sync is never an implicit completion condition. A one-passage change stops once that passage is updated and any resulting active conflicts are resolved; unrelated metadata, headings, summaries and history stay untouched.
 
 ## Final review
 

@@ -6,15 +6,16 @@ description: >-
   Use when the user wants flaws, omissions, contradictions, sequencing
   problems or overdesign found and fixed without reopening settled decisions;
   when decisions or phase boundaries are frozen, agreed, authoritative or
-  already decided; when the user says follow the agreed plan, preserve the overall direction, maintain consistency,
-  do not redesign, optimize within the agreed direction, "don't redesign"; or when audit/refactor
+  already decided; when the user says "follow the agreed plan", "preserve the
+  overall direction", "maintain consistency", "don't redesign", or "optimize
+  within the agreed direction"; or when audit/refactor
   skills must stay subordinate to prior decisions. Not for greenfield design
   where nothing is decided yet.
 ---
 
 # Decision Lock
 
-Be low-freedom about frozen direction and high-rigor inside the remaining design space. Protect settled decisions without becoming a passive copy editor.
+Be strict about frozen direction and rigorous inside the remaining design space. Protect settled decisions without becoming a passive copy editor.
 
 ## Establish the contract
 
@@ -91,7 +92,7 @@ Use inspection to locate gaps and prove corrections, not to hunt for a preferred
 
 ## Scope and mutation gates
 
-Keep the current deliverable active all turn; do not substitute a nearby explanation, redesign, implementation, repository-wide edit or later-phase plan. Treat requests to analyze, inspect, explain, review, report or plan as read-only unless the user explicitly authorizes file changes. When the user authorizes improving named documents, make in-bounds corrections and consistency updates inside that scope without asking about every detail. Do not pull later-stage behavior into the current stage, and do not move work between stages on a local heuristic; verify the full authoritative dependency chain first. In progress updates, report only neutral status, completed checks or concrete evidence, not tentative architecture conclusions.
+Keep the current deliverable active throughout the turn; do not substitute a nearby explanation, redesign, implementation, repository-wide edit or later-phase plan. Treat requests to analyze, inspect, explain, review, report or plan as read-only unless the user explicitly authorizes file changes. When the user authorizes improving named documents, make in-bounds corrections and consistency updates inside that scope without asking about every detail. Do not pull later-stage behavior into the current stage, and do not move work between stages on a local heuristic; verify the full authoritative dependency chain first. In progress updates, report only neutral status, completed checks or concrete evidence, not tentative architecture conclusions.
 
 ## Verification claims
 

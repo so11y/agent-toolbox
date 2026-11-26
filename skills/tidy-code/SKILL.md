@@ -9,9 +9,9 @@ description: >-
   call per intent. Use for local refactoring, simplification, optimization or
   a final readability pass on a module, file or feature, and whenever the user
   says "clean up", "simplify", "tidy", "optimize", "too slow", "too
-  defensive", "too many layers", "simplify/tidy/optimize/remove redundant guards". Not for repository-wide
-  audits or architecture decisions (use audit-refactor-project) or for plain
-  bug fixes.
+  defensive", "too many layers", or "remove redundant guards". Not for
+  repository-wide audits or architecture decisions (use
+  audit-refactor-project) or for plain bug fixes.
 ---
 
 # Tidy Code
@@ -106,7 +106,8 @@ Run the formatter and proportionate type-check, lint, tests and build. Then conf
 
 - callers express each common intent with one direct call and do none of the filtering, bookkeeping, sequencing, batching or notification suppression the API should own;
 - mixed updates are interpreted once, and hooks and observers run only after the writes they must observe;
-- every remaining runtime check has a reachable producer and required handling; callback and continuation guards also meet the permission and stale-work conditions in Source and trust; no speculative guard, clone, fallback, assertion, optional chain or catch-and-continue remains;
+- every remaining runtime check has a reachable producer and required handling, and callback or continuation guards also meet the permission and stale-work conditions in Source and trust;
+- no speculative guard, clone, fallback, assertion, optional chain or catch-and-continue remains;
 - no rollback, retry, atomicity, lock, recovery or custom error machinery exists without an explicit contract;
 - canonical utilities replace hand-written equivalents, and no duplicate helper, forwarding wrapper, alias or parallel API remains;
 - no avoidable repeated work remains in the touched flow, and any performance claim is backed by a measurement;

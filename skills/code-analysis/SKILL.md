@@ -22,7 +22,7 @@ Answer one question for one dimension: does this actually go wrong, or cost enou
 
 - **Dimension**: performance, reentrancy/concurrency, or both if the user says so.
 - **Scope**: the entry point, function or module. If the user names a suspect, verify that first and only that.
-- **Performance also needs** a metric (latency, throughput, memory, query count, startup) and a scenario with scale (e.g. one request, 10k rows).
+- **Performance inputs** (when analyzing performance): a metric (latency, throughput, memory, query count, startup) and a scenario with scale (e.g. one request, 10k rows).
 
 Infer a missing input from context and state it; ask one question only when no sensible assumption exists.
 
@@ -48,7 +48,7 @@ Report only a stage that is dominant or roughly 20% or more of the total (unless
 
 Report a runtime finding only when the operation is permitted, the supported sequence is reachable, and the harmful result is demonstrated. Explicitly excluded calls belong in the scope explanation, not in runtime findings or proposals for extra guards. An unresolved permission question stays unresolved; do not report it as proof of safety.
 
-Do one pass, without hypothetical interleaving inventories. In single-threaded code, follow actual synchronous callbacks and await continuations rather than inventing parallel execution; use smart-contract reentrancy concepts only for contracts. Prefer completing related writes before notification. For proven stale work, use current ownership, relationships or existing reference identity to decide whether the old flow may continue; do not assume new locks or flags are needed.
+Do one pass, without hypothetical interleaving inventories. In single-threaded code, follow actual synchronous callbacks and await continuations rather than inventing parallel execution; use smart-contract reentrancy concepts only for smart contracts. Prefer completing related writes before notification. For proven stale work, use current ownership, relationships or existing reference identity to decide whether the old flow may continue; do not assume new locks or flags are needed.
 
 ## Reporting threshold
 

@@ -13,8 +13,9 @@ description: >-
   project or several modules, even without the word "refactor" (e.g. "audit
   this repo", "simplify the architecture", "find duplicated logic across
   features", "why is this system slow", "remove dead code and over-defensive
-  checks", "audit/refactor/optimize repo"). Not for single-bug fixes, new features,
-  single-file cleanup or small local refactors (use tidy-code).
+  checks"). Not for single-bug fixes, new features, single-file cleanup or
+  small local refactors (use tidy-code), or read-only single-flow diagnosis
+  (use code-analysis).
 ---
 
 # Audit and Refactor a Project
@@ -26,7 +27,7 @@ Establish required behavior from current user direction, authoritative API/domai
 ## Modes
 
 - **Audit only** (the user asks to audit/review/assess): produce findings, the ranked list and the removal inventory. Do not edit.
-- **Refactor** (the user asks to refactor/simplify/clean up, or approves the audit): run the full workflow. Broad permission covers complete internal, behavior-preserving repairs. Removing user-visible features, workflows or uncertain public APIs still needs explicit approval.
+- **Refactor** (the user asks to refactor/simplify/clean up, or approves the audit): run the full workflow. A refactor request authorizes complete internal, behavior-preserving repairs. Removing user-visible features, workflows or uncertain public APIs still needs explicit approval.
 - **Plan checkpoint**: before rewriting a subsystem or changing several packages, state the scope and structural evidence first, then proceed unless the user objects.
 
 ## Principles
