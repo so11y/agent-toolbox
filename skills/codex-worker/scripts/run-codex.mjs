@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const MODES = new Set(['analyze', 'execute', 'review', 'resume']);
 const EFFORTS = new Set(['low', 'medium', 'high', 'xhigh', 'ultra', 'persistent', 'max']);
-const DEFAULT_EFFORT = { analyze: 'medium', review: 'medium', execute: 'high', resume: 'high' };
+const DEFAULT_EFFORT = { analyze: 'medium', review: 'high', execute: 'max', resume: 'max' };
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
 
 const WORKER_PREAMBLE = [

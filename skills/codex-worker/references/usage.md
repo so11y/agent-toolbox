@@ -9,7 +9,7 @@
 | `mode` | `"analyze" \| "execute" \| "review" \| "resume"` | `"analyze"` | Execution mode and sandbox policy. |
 | `cwd` | string | `process.cwd()` | Repository or target working directory. |
 | `prompt` | string | required (optional in `review`) | Concrete task instructions sent to Codex via stdin. |
-| `effort` | `"low" \| "medium" \| "high" \| "xhigh" \| "ultra" \| "persistent" \| "max"` | `medium` (`analyze`/`review`), `high` (`execute`/`resume`) | Overrides `model_reasoning_effort` for this call. |
+| `effort` | `"low" \| "medium" \| "high" \| "xhigh" \| "ultra" \| "persistent" \| "max"` | `medium` (`analyze`), `high` (`review`), `max` (`execute`/`resume`) | Overrides `model_reasoning_effort` for this call. |
 | `model` | string | config default | Optional explicit model override (`-m`). |
 | `persist` | boolean | `false` (`true` for `resume`) | When `false`, passes `--ephemeral` so one-off runs do not clutter Codex Desktop session history. |
 | `sessionId` | string | required in `resume` | Exact `sessionId` returned from an earlier `persist: true` call. `--last` is rejected. |
@@ -55,7 +55,6 @@ By default, every invocation inherits auth, model provider, trusted projects, an
 {
   "mode": "execute",
   "cwd": "D:/code/my-app",
-  "effort": "high",
   "prompt": "In src/parser.ts only, replace the manual query-string loop with URLSearchParams while preserving duplicate keys. Do not edit other source files. Run `npm test` and report the exact command and exit code."
 }
 '@ | node "D:/code/agent-toolbox/skills/codex-worker/scripts/run-codex.mjs"

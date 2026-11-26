@@ -26,10 +26,10 @@ Use local Codex CLI as a bounded execution worker. The calling agent owns archit
 
 Choose the narrowest mode that fits the task:
 
-- **`analyze` (default, read-only)**: `-s read-only`, `--ephemeral`, default effort `medium`. Use for multi-file sweeps, call-path tracing, log diagnosis, or targeted evidence gathering. Makes no file edits.
-- **`review` (read-only diff review)**: `codex exec review` (`--uncommitted`, `--base <branch>`, or `--commit <sha>`), `--ephemeral`, default effort `medium`. Use for an independent second opinion on changes.
-- **`execute` (bounded edits & commands)**: `-s workspace-write`, `--ephemeral` by default, default effort `high`. Use only when the task authorizes file changes or test runs. Always specify allowed paths, non-goals, and required verification commands. Add `worktree: true` whenever the calling agent and Codex may touch the same repository concurrently.
-- **`resume` (explicit continuation)**: continue a previously persisted worker run (`persist: true`) using its exact `sessionId`. Never use `--last`, because `CODEX_HOME` is shared with Codex Desktop.
+- **`analyze` (default, read-only)**: `-s read-only`, `--ephemeral`, default effort `medium` (escalate to `high` or `max` for complex diagnosis). Use for multi-file sweeps, call-path tracing, log diagnosis, or targeted evidence gathering. Makes no file edits.
+- **`review` (read-only diff review)**: `codex exec review` (`--uncommitted`, `--base <branch>`, or `--commit <sha>`), `--ephemeral`, default effort `high` (escalate to `max` for high-risk diffs). Use for an independent second opinion on changes.
+- **`execute` (bounded edits & commands)**: `-s workspace-write`, `--ephemeral` by default, default effort `max`. Use only when the task authorizes file changes or test runs. Always specify allowed paths, non-goals, and required verification commands. Add `worktree: true` whenever the calling agent and Codex may touch the same repository concurrently.
+- **`resume` (explicit continuation)**: continue a previously persisted worker run (`persist: true`) using its exact `sessionId`, default effort `max`. Never use `--last`, because `CODEX_HOME` is shared with Codex Desktop.
 
 Never pass `--dangerously-bypass-approvals-and-sandbox` unless the user explicitly asks for it and accepts the risk.
 

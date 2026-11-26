@@ -71,7 +71,7 @@ test('buildCodexInvocation enforces safe defaults for analyze, execute, review, 
       persist: true,
       worktree: true
     }, env);
-    assert.equal(execute.effort, 'high');
+    assert.equal(execute.effort, 'max');
     assert.equal(execute.args[execute.args.indexOf('-s') + 1], 'workspace-write');
     assert.equal(execute.args.includes('--ephemeral'), false);
     assert.ok(execute.args.includes('--worktree'));
@@ -81,6 +81,7 @@ test('buildCodexInvocation enforces safe defaults for analyze, execute, review, 
       cwd: tmp,
       review: { base: 'main' }
     }, env);
+    assert.equal(review.effort, 'high');
     assert.equal(review.args[0], 'exec');
     assert.equal(review.args[1], 'review');
     assert.equal(review.args.includes('-s'), false);
