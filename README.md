@@ -5,13 +5,17 @@
 ## 目录归属
 
 ```text
-skills/                         七个技能的唯一源码，说明和界面元数据均为英文
+skills/                         八个技能的唯一源码，说明和界面元数据均为英文
   claude-web/
     scripts/vnc.cjs             本地执行，随技能一起安装
   claude-consult/
     scripts/                    本地 SSH 调用、心跳发送、停止钩子和会话管理
     references/
     tests/                      本地停止测试和可选真实请求测试
+  codex-worker/
+    scripts/run-codex.mjs       本地无头调用 Codex CLI 的隔离包装脚本
+    references/
+    tests/                      参数构建与 JSONL 解析测试
   audit-refactor-project/
   code-analysis/
   concise-plan-docs/
@@ -35,13 +39,14 @@ tests/                          本地安装器的隔离测试
 
 | 界面名称 | 技能源码 | 安装位置 |
 | --- | --- | --- |
-| Repository Audit | `skills/audit-refactor-project` | Codex、Cursor、Claude |
-| Code Analysis | `skills/code-analysis` | Codex、Cursor、Claude |
-| Concise Plan Documents | `skills/concise-plan-docs` | Codex、Cursor、Claude |
-| Decision Lock | `skills/decision-lock` | Codex、Cursor、Claude |
-| Tidy Code | `skills/tidy-code` | Codex、Cursor、Claude |
+| Repository Audit | `skills/audit-refactor-project` | Codex、Cursor、Claude、Antigravity |
+| Code Analysis | `skills/code-analysis` | Codex、Cursor、Claude、Antigravity |
+| Concise Plan Documents | `skills/concise-plan-docs` | Codex、Cursor、Claude、Antigravity |
+| Decision Lock | `skills/decision-lock` | Codex、Cursor、Claude、Antigravity |
+| Tidy Code | `skills/tidy-code` | Codex、Cursor、Claude、Antigravity |
 | Claude Analysis, Codex Execution | `skills/claude-consult` | 本地 Codex |
 | Claude Web | `skills/claude-web` | 本地 Codex |
+| Codex Worker | `skills/codex-worker` | 本地 Antigravity |
 
 Caveman、Find Skills、Codex 自带的 `.system` 技能和插件缓存不在本次范围内。
 
@@ -57,9 +62,10 @@ node install.mjs codex cursor
 
 | 工具 | 安装入口 | 技能选择 |
 | --- | --- | --- |
-| Codex | `$CODEX_HOME/skills/`，未设置时为 `~/.codex/skills/` | 七个技能；本机入口为 `D:\codex\home\skills` |
+| Codex | `$CODEX_HOME/skills/`，未设置时为 `~/.codex/skills/` | 七个技能（不含 `codex-worker`）；本机入口为 `D:\codex\home\skills` |
 | Cursor | `~/.cursor/skills/` | 表中的五个开发技能 |
 | 本地 Claude | `~/.claude/skills/` | 五个开发技能；显式运行 `node install.mjs claude` 安装 |
+| Antigravity | `~/.gemini/config/skills.json` | 五个开发技能 + `codex-worker`；直接引用仓库目录（避免 Windows Junction 被忽略），显式运行 `node install.mjs antigravity` 配置 |
 
 省略参数时安装 Codex 和 Cursor。原有同名目录移到各工具真实配置目录中的 `skill-backups/<时间>/`，与技能入口位于同一磁盘并处于扫描目录之外；其他技能、`.system` 和插件保持原位。重复执行会保留正确的链接。移动仓库后重新运行安装器，更新链接目标。
 

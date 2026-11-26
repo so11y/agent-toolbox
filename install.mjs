@@ -5,19 +5,20 @@ import { fileURLToPath } from 'node:url';
 import { defaultConnectionFile } from './skills/claude-consult/scripts/consult.mjs';
 
 const sources = fileURLToPath(new URL('./skills/', import.meta.url));
-const allSkills = (await fs.readdir(sources, { withFileTypes: true }))
-  .filter(entry => entry.isDirectory()).map(entry => entry.name).sort();
 const developmentSkills = ['audit-refactor-project', 'code-analysis', 'concise-plan-docs', 'decision-lock', 'tidy-code'];
+const codexSkills = [...developmentSkills, 'claude-consult', 'claude-web'];
+const antigravitySkills = [...developmentSkills, 'codex-worker'];
 const codexHome = process.env.CODEX_HOME || path.join(homedir(), '.codex');
 const profiles = {
-  codex: { directory: path.join(codexHome, 'skills'), skills: allSkills },
-  cursor: { directory: path.join(homedir(), '.cursor', 'skills'), skills: developmentSkills },
-  claude: { directory: path.join(homedir(), '.claude', 'skills'), skills: developmentSkills }
+  codex: { type: 'symlink', directory: path.join(codexHome, 'skills'), skills: codexSkills },
+  cursor: { type: 'symlink', directory: path.join(homedir(), '.cursor', 'skills'), skills: developmentSkills },
+  claude: { type: 'symlink', directory: path.join(homedir(), '.claude', 'skills'), skills: developmentSkills },
+  antigravity: { type: 'skills-json', file: path.join(homedir(), '.gemini', 'config', 'skills.json'), skills: antigravitySkills }
 };
 const requested = process.argv.slice(2);
 const selected = requested.length ? [...new Set(requested)] : ['codex', 'cursor'];
 for (const name of selected) {
-  if (!profiles[name]) throw new Error('Usage: node install.mjs [codex] [cursor] [claude]');
+  if (!profiles[name]) throw new Error('Usage: node install.mjs [codex] [cursor] [claude] [antigravity]');
 }
 const stamp = new Date().toISOString().replaceAll(':', '-');
 
@@ -35,9 +36,37 @@ if (selected.includes('codex') && !await info(defaultConnectionFile) && await in
 }
 
 const installed = [];
+const configured = [];
 const backups = {};
 for (const agent of selected) {
   const profile = profiles[agent];
+  if (profile.type === 'skills-json') {
+    const sourceRoot = (await fs.realpath(sources)).replaceAll('\\', '/');
+    const desired = { path: sourceRoot, include_only: profile.skills };
+    await fs.mkdir(path.dirname(profile.file), { recursive: true });
+    let config = {};
+    const existing = await info(profile.file);
+    if (existing) {
+      config = JSON.parse(await fs.readFile(profile.file, 'utf8'));
+    }
+    const entries = Array.isArray(config.entries) ? [...config.entries] : [];
+    const normalizePath = value => typeof value === 'string'
+      ? path.resolve(value).replaceAll('\\', '/').toLowerCase()
+      : '';
+    const targetKey = normalizePath(sourceRoot);
+    const index = entries.findIndex(entry => normalizePath(entry?.path) === targetKey);
+    const same = index !== -1
+      && entries[index].path === desired.path
+      && JSON.stringify(entries[index].include_only) === JSON.stringify(desired.include_only)
+      && entries[index].exclude === undefined;
+    if (!same) {
+      if (index === -1) entries.push(desired);
+      else entries[index] = desired;
+      await fs.writeFile(profile.file, `${JSON.stringify({ ...config, entries }, null, 2)}\n`, 'utf8');
+      configured.push({ agent, file: profile.file, path: sourceRoot, skills: profile.skills });
+    }
+    continue;
+  }
   await fs.mkdir(profile.directory, { recursive: true });
   const directory = await fs.realpath(profile.directory);
   const backup = path.join(path.dirname(directory), 'skill-backups', stamp);
@@ -61,5 +90,9 @@ for (const agent of selected) {
     installed.push({ agent, skill: name, target, source });
   }
 }
-console.log(JSON.stringify({ linked: installed, connectionFile: defaultConnectionFile,
-  ...(Object.keys(backups).length ? { backups } : {}) }, null, 2));
+console.log(JSON.stringify({
+  linked: installed,
+  ...(configured.length ? { configured } : {}),
+  connectionFile: defaultConnectionFile,
+  ...(Object.keys(backups).length ? { backups } : {})
+}, null, 2));
