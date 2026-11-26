@@ -53,6 +53,7 @@ test('buildCodexInvocation enforces safe defaults for analyze, execute, review, 
     const analyze = buildCodexInvocation({ mode: 'analyze', cwd: tmp, prompt: 'Read README.' }, env);
     assert.equal(analyze.effort, 'medium');
     assert.equal(analyze.persist, false);
+    assert.equal(analyze.timeoutMs, null);
     assert.ok(analyze.args.includes('-s'));
     assert.equal(analyze.args[analyze.args.indexOf('-s') + 1], 'read-only');
     assert.ok(analyze.args.includes('--ephemeral'));
@@ -69,9 +70,11 @@ test('buildCodexInvocation enforces safe defaults for analyze, execute, review, 
       cwd: tmp,
       prompt: 'Edit src/a.js.',
       persist: true,
-      worktree: true
+      worktree: true,
+      timeoutMs: 5000
     }, env);
     assert.equal(execute.effort, 'max');
+    assert.equal(execute.timeoutMs, 5000);
     assert.equal(execute.args[execute.args.indexOf('-s') + 1], 'workspace-write');
     assert.equal(execute.args.includes('--ephemeral'), false);
     assert.ok(execute.args.includes('--worktree'));

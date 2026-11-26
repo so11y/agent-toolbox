@@ -17,7 +17,7 @@
 | `addDir` | string[] | `[]` | Extra writable directories for `execute` (`--add-dir`). |
 | `review` | `{ uncommitted?, base?, commit?, title? }` | `{ uncommitted: true }` | Diff target for `review` mode. Supply at most one of `uncommitted`, `base`, or `commit`. |
 | `outputSchema` | string | omitted | Optional JSON Schema file path (`--output-schema`). |
-| `timeoutMs` | number | `600000` (10 min) | Hard wall-clock timeout; kills the process tree on expiry. |
+| `timeoutMs` | number | none (no limit) | Optional wall-clock timeout in ms. Omit to wait until Codex exits naturally; when set to a positive number, kills the process tree on expiry. |
 | `rawPrompt` | boolean | `false` | Skip prepending the default worker constraint header. |
 | `keepSkills` | boolean | `false` | Keep host skill discovery enabled instead of passing `--enable skip_host_skill_discovery`. |
 | `keepPlugins` | boolean | `false` | Keep desktop plugins from `config.toml` enabled. |
@@ -96,7 +96,6 @@ First call with `"persist": true` and capture `sessionId` from the JSON response
   "mode": "analyze",
   "effort": "medium",
   "exitCode": 0,
-  "timedOut": false,
   "sessionId": "01a2...",
   "persisted": false,
   "durationMs": 12450,

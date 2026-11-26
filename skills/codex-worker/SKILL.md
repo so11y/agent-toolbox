@@ -47,7 +47,7 @@ Read [references/usage.md](references/usage.md) for full options and examples. A
 '@ | node "D:/code/agent-toolbox/skills/codex-worker/scripts/run-codex.mjs"
 ```
 
-Resolve `scripts/run-codex.mjs` relative to this skill's directory. The script prints a single compact JSON summary (`ok`, `mode`, `exitCode`, `sessionId`, `durationMs`, `lastMessage`, `usage`, `errors`).
+Resolve `scripts/run-codex.mjs` relative to this skill's directory. By default the wrapper waits until Codex finishes naturally with no kill timeout, then prints a single compact JSON summary (`ok`, `mode`, `exitCode`, `sessionId`, `durationMs`, `lastMessage`, `usage`, `errors`).
 
 ## Prompting contract
 

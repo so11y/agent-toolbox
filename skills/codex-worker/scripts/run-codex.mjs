@@ -7,7 +7,6 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const MODES = new Set(['analyze', 'execute', 'review', 'resume']);
 const EFFORTS = new Set(['low', 'medium', 'high', 'xhigh', 'ultra', 'persistent', 'max']);
 const DEFAULT_EFFORT = { analyze: 'medium', review: 'high', execute: 'max', resume: 'max' };
-const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
 
 const WORKER_PREAMBLE = [
   'Worker execution rules:',
@@ -163,7 +162,7 @@ export function buildCodexInvocation(options = {}, env = process.env) {
     effort,
     persist,
     stdinPrompt,
-    timeoutMs: Number(options.timeoutMs) > 0 ? Number(options.timeoutMs) : DEFAULT_TIMEOUT_MS
+    timeoutMs: Number(options.timeoutMs) > 0 ? Number(options.timeoutMs) : null
   };
 }
 
@@ -253,11 +252,14 @@ export async function runCodex(options = {}, env = process.env) {
     let timedOut = false;
     let settled = false;
 
-    const timer = setTimeout(() => {
-      timedOut = true;
-      killProcessTree(child);
-    }, invocation.timeoutMs);
-    timer.unref();
+    let timer = null;
+    if (invocation.timeoutMs != null) {
+      timer = setTimeout(() => {
+        timedOut = true;
+        killProcessTree(child);
+      }, invocation.timeoutMs);
+      timer.unref();
+    }
 
     child.stdout.setEncoding('utf8');
     child.stderr.setEncoding('utf8');
@@ -267,7 +269,7 @@ export async function runCodex(options = {}, env = process.env) {
     const finish = (exitCode, spawnError = null) => {
       if (settled) return;
       settled = true;
-      clearTimeout(timer);
+      if (timer) clearTimeout(timer);
       const parsed = parseJsonlOutput(stdout);
       const errors = [...parsed.errors];
       if (spawnError) errors.push(spawnError.message);
@@ -278,7 +280,7 @@ export async function runCodex(options = {}, env = process.env) {
         mode: invocation.mode,
         effort: invocation.effort,
         exitCode: exitCode ?? 1,
-        timedOut,
+        ...(timedOut ? { timedOut: true } : {}),
         sessionId: parsed.sessionId,
         persisted: invocation.persist,
         durationMs: Date.now() - startedAt,
