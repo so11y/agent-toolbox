@@ -7,6 +7,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const MODES = new Set(['analyze', 'execute', 'review', 'resume']);
 const EFFORTS = new Set(['low', 'medium', 'high', 'xhigh', 'ultra', 'persistent', 'max']);
 const DEFAULT_EFFORT = { analyze: 'medium', review: 'high', execute: 'max', resume: 'max' };
+const DEFAULT_CAPACITY_THRESHOLD = 2;
+const MODEL_CAPACITY_RE = /selected model is at capacity\b/i;
 
 const WORKER_PREAMBLE = [
   'Worker execution rules:',
@@ -162,8 +164,34 @@ export function buildCodexInvocation(options = {}, env = process.env) {
     effort,
     persist,
     stdinPrompt,
-    timeoutMs: Number(options.timeoutMs) > 0 ? Number(options.timeoutMs) : null
+    timeoutMs: Number(options.timeoutMs) > 0 ? Number(options.timeoutMs) : null,
+    capacityThreshold: Number.isInteger(options.capacityThreshold) && options.capacityThreshold >= 1
+      ? options.capacityThreshold
+      : DEFAULT_CAPACITY_THRESHOLD
   };
+}
+
+function extractErrorTextFromLine(line, isStdout) {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+  if (isStdout) {
+    try {
+      const event = JSON.parse(trimmed);
+      if (event.type === 'error' && typeof event.message === 'string') return event.message;
+      if (event.type === 'turn.failed' && typeof event.error?.message === 'string') return event.error.message;
+      if (event.type === 'item.completed' && event.item?.type === 'error' && typeof event.item.message === 'string') {
+        return event.item.message;
+      }
+      return null;
+    } catch {
+      return trimmed;
+    }
+  }
+  return trimmed;
+}
+
+export function isModelAtCapacityText(text) {
+  return typeof text === 'string' && MODEL_CAPACITY_RE.test(text);
 }
 
 export function parseJsonlOutput(stdout) {
@@ -249,8 +277,34 @@ export async function runCodex(options = {}, env = process.env) {
 
     let stdout = '';
     let stderr = '';
+    let stdoutLineBuf = '';
+    let stderrLineBuf = '';
+    let stdoutCapacityHits = 0;
+    let stderrCapacityHits = 0;
     let timedOut = false;
+    let capacityAborted = false;
     let settled = false;
+
+    const checkCapacityLine = (line, isStdout) => {
+      if (settled || capacityAborted) return;
+      const errText = extractErrorTextFromLine(line, isStdout);
+      if (!isModelAtCapacityText(errText)) return;
+      if (isStdout) stdoutCapacityHits += 1;
+      else stderrCapacityHits += 1;
+      if (Math.max(stdoutCapacityHits, stderrCapacityHits) >= invocation.capacityThreshold) {
+        capacityAborted = true;
+        killProcessTree(child);
+      }
+    };
+
+    const consumeLines = (chunk, isStdout) => {
+      const combined = (isStdout ? stdoutLineBuf : stderrLineBuf) + chunk;
+      const lines = combined.split(/\r?\n/);
+      const tail = lines.pop() ?? '';
+      if (isStdout) stdoutLineBuf = tail;
+      else stderrLineBuf = tail;
+      for (const line of lines) checkCapacityLine(line, isStdout);
+    };
 
     let timer = null;
     if (invocation.timeoutMs != null) {
@@ -263,24 +317,38 @@ export async function runCodex(options = {}, env = process.env) {
 
     child.stdout.setEncoding('utf8');
     child.stderr.setEncoding('utf8');
-    child.stdout.on('data', (chunk) => { stdout += chunk; });
-    child.stderr.on('data', (chunk) => { stderr += chunk; });
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk;
+      consumeLines(chunk, true);
+    });
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk;
+      consumeLines(chunk, false);
+    });
 
     const finish = (exitCode, spawnError = null) => {
       if (settled) return;
       settled = true;
       if (timer) clearTimeout(timer);
+      if (stdoutLineBuf) checkCapacityLine(stdoutLineBuf, true);
+      if (stderrLineBuf) checkCapacityLine(stderrLineBuf, false);
       const parsed = parseJsonlOutput(stdout);
       const errors = [...parsed.errors];
+      const capacityErrorCount = Math.max(stdoutCapacityHits, stderrCapacityHits);
       if (spawnError) errors.push(spawnError.message);
+      if (capacityAborted) {
+        errors.push(`Aborted after ${capacityErrorCount} model-at-capacity errors ("Selected model is at capacity. Please try a different model.").`);
+      }
       if (timedOut) errors.push(`Timed out after ${invocation.timeoutMs} ms.`);
       const trimmedStderr = stderr.trim();
       resolve({
-        ok: !timedOut && !spawnError && exitCode === 0,
+        ok: !timedOut && !capacityAborted && !spawnError && exitCode === 0,
         mode: invocation.mode,
         effort: invocation.effort,
         exitCode: exitCode ?? 1,
         ...(timedOut ? { timedOut: true } : {}),
+        ...(capacityAborted ? { abortedReason: 'model_at_capacity' } : {}),
+        ...(capacityErrorCount > 0 ? { capacityErrorCount } : {}),
         sessionId: parsed.sessionId,
         persisted: invocation.persist,
         durationMs: Date.now() - startedAt,

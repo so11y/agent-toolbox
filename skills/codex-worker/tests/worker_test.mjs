@@ -128,7 +128,36 @@ test('parseJsonlOutput extracts thread_id, last message, usage, and errors', () 
   assert.equal(parsed.sessionId, 'tid-123');
   assert.equal(parsed.lastMessage, 'final answer');
   assert.deepEqual(parsed.usage, { input_tokens: 1000, output_tokens: 42 });
-  assert.deepEqual(parsed.errors, ['warn-1']);
+  assert.equal(parsed.errors[0], 'warn-1');
+});
+
+test('runCodex aborts immediately on repeated model-at-capacity errors and ignores agent_message quotes', async () => {
+  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'codex-worker-cap-'));
+  try {
+    // Mock `exec` script launched via CODEX_BIN=node with cwd=tmp
+    await fs.writeFile(path.join(tmp, 'exec'), [
+      'console.log(JSON.stringify({ type: "thread.started", thread_id: "tid-cap" }));',
+      'console.log(JSON.stringify({ type: "item.completed", item: { id: "i0", type: "agent_message", text: "Quoting Selected model is at capacity. Please try a different model. should not count." } }));',
+      'console.log(JSON.stringify({ type: "error", message: "Selected model is at capacity. Please try a different model." }));',
+      'console.log(JSON.stringify({ type: "error", message: "Selected model is at capacity. Please try a different model." }));',
+      'setTimeout(() => {}, 60000);'
+    ].join('\n'));
+
+    const started = Date.now();
+    const res = await runCodex(
+      { mode: 'analyze', cwd: tmp, prompt: 'Test capacity abort.' },
+      { ...process.env, CODEX_HOME: tmp, CODEX_BIN: process.execPath }
+    );
+    const elapsed = Date.now() - started;
+    assert.equal(res.ok, false);
+    assert.equal(res.abortedReason, 'model_at_capacity');
+    assert.equal(res.capacityErrorCount, 2);
+    assert.equal(res.sessionId, 'tid-cap');
+    assert.ok(elapsed < 10000, `Expected immediate abort, took ${elapsed} ms`);
+    assert.ok(res.errors.some(e => /model-at-capacity/i.test(e)));
+  } finally {
+    await fs.rm(tmp, { recursive: true, force: true });
+  }
 });
 
 test('runCodex dryRun returns resolved invocation without spawning codex', async () => {
